@@ -23,11 +23,10 @@ describe("DarkPoolArbiter", function () {
   });
 
   function makeCommitHash(market, isYes, size, limitPrice, expiry, salt) {
-    return ethers.keccak256(
-      ethers.AbiCoder.defaultAbiCoder().encode(
-        ["address", "bool", "uint256", "uint256", "uint256", "bytes32"],
-        [market, isYes, size, limitPrice, expiry, salt]
-      )
+    // Must match contract: keccak256(abi.encodePacked(market, isYes, size, limitPriceBps, expiry, salt))
+    return ethers.solidityPackedKeccak256(
+      ["address", "bool", "uint256", "uint256", "uint256", "bytes32"],
+      [market, isYes, size, limitPrice, expiry, salt]
     );
   }
 
