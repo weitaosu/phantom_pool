@@ -7,6 +7,18 @@
 
 ---
 
+## Project Description
+
+**DarkPool.trade** is a privacy-preserving prediction market trading platform that lets large traders execute positions without revealing their size or direction on-chain. On transparent prediction markets like Polymarket, a whale buying $50,000 of "Yes" instantly signals insider activity — price spikes before the order fills, and front-running bots extract value from every large trade. DarkPool.trade solves this with a commit-reveal matching layer built on Alkahest conditional escrows: traders lock funds in opaque on-chain commitments, an off-chain matching engine pairs compatible counterparties, and settlement executes atomically only when a match is confirmed.
+
+At its core, the system is an **autonomous AI trading agent** that monitors real-time news feeds, calculates predictive edge using GPT-4o sentiment analysis, and routes high-confidence trades through the dark pool first — capturing better prices from private counterparties before any signal reaches the public order book. Unmatched residuals are executed as iceberg orders (small timed slices) to minimize market impact. The agent's wallet is secured by a Swig smart account with human-controlled spend limits, program whitelists, and an emergency stop — all managed through a Telegram interface.
+
+The platform is multi-chain by design: primary settlement flows through Polymarket's CTF Exchange on Polygon (via Alkahest arbitration), the Solana branch settles against DFlow's tokenized Kalshi SPL markets with x402 micropayment access, and a TRON branch serves as a two-role DeFi dark pool (trader + market maker) using USDT. A Gemini Prediction Markets API integration powers cross-venue arbitrage detection — surfacing pricing discrepancies between Gemini and Polymarket for the same events. All agent decisions and order logs are stored permanently on Filecoin via the Synapse SDK, creating a verifiable, CID-backed reputation trail.
+
+**Key stats:** 9 bounties targeted · $9,000 prize pool · 4 chains (Polygon, Solana, TRON, Filecoin/Calibnet) · 3 AI integrations (OpenAI GPT-4o, NewsAPI, Gemini API) · 1 unified codebase
+
+---
+
 ## Bounty Coverage Map
 
 | Bounty | Sponsor | Prize | Fit | How We Cover It |
