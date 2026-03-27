@@ -10,7 +10,7 @@ Participants must create a system where agents can autonomously manage their own
 
 ## Prize Information
 
-$1,000
+\$1,000
 
 ## Background Information
 

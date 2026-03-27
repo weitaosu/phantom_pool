@@ -8,7 +8,7 @@ Build any project that uses or extends Arkhai's open-source tools. We're especia
 
 ## Prize Information
 
-$1,000
+\$1,000
 
 ## Objective
 
@@ -16,9 +16,9 @@ Build a project that uses or extends any of Arkhai's open-source tools. The goal
 
 Example directions:
 
-- **New Protocol Contracts (Arbiters, Escrows & Fulfillments):** Solidity implementations of novel arbiters, escrow obligations, or fulfillment types — ZK proofs, oracle data, reputation signals, threshold quorums, or new asset/obligation patterns.
-- **Agentic Commerce Applications:** Markets where AI agents autonomously post, fulfill, and settle escrows — agent-to-agent service exchange, autonomous compute procurement, self-managing data pipelines.
-- **NLA Domain Applications:** Full-stack builds that co-design escrow structure, fulfillment format, and arbitration logic for a specific domain (legal agreements, SLA enforcement, research deliverables, content moderation).
+* **New Protocol Contracts (Arbiters, Escrows & Fulfillments):** Solidity implementations of novel arbiters, escrow obligations, or fulfillment types — ZK proofs, oracle data, reputation signals, threshold quorums, or new asset/obligation patterns.
+* **Agentic Commerce Applications:** Markets where AI agents autonomously post, fulfill, and settle escrows — agent-to-agent service exchange, autonomous compute procurement, self-managing data pipelines.
+* **NLA Domain Applications:** Full-stack builds that co-design escrow structure, fulfillment format, and arbitration logic for a specific domain (legal agreements, SLA enforcement, research deliverables, content moderation).
 
 **Decentralized Service Markets:**
 
@@ -30,20 +30,20 @@ Arkhai builds infrastructure for agentic commerce — open markets where AI agen
 
 Our core public good is **Alkahest**, a general-purpose conditional escrow system built on EAS (Ethereum Attestation Service), developed because no equivalent existed for EVM. Everything Arkhai builds uses it as a foundation. We also develop **Git Commit Trading** (decentralized test-suite bounties with on-chain settlement), **Natural Language Agreements** (LLM-arbitrated escrows for plain-English demands), and **de-redis-clients** (a proof-of-concept for decentralized cloud service provisioning).
 
-**Main website:** [https://www.arkhai.io](https://www.arkhai.io/)
+**Main website:**[https://www.arkhai.io](https://www.arkhai.io)
 
 ## Guidelines and Resources
 
 **Documentation**
 
-- Full protocol docs (escrow flows, writing custom arbiters, SDK reference): https://www.arkhai.io/docs
+* Full protocol docs (escrow flows, writing custom arbiters, SDK reference): [https://www.arkhai.io/docs](https://www.arkhai.io/docs)
 
 **Repos**
 
-- Alkahest (core protocol + SDKs): https://github.com/arkhai-io/alkahest
-- Git Commit Trading: https://github.com/arkhai-io/git-commit-trading
-- Natural Language Agreements: https://github.com/arkhai-io/natural-language-agreements
-- de-redis-clients: https://github.com/arkhai-io/de-redis-clients
+* Alkahest (core protocol + SDKs): [https://github.com/arkhai-io/alkahest](https://github.com/arkhai-io/alkahest)
+* Git Commit Trading: [https://github.com/arkhai-io/git-commit-trading](https://github.com/arkhai-io/git-commit-trading)
+* Natural Language Agreements: [https://github.com/arkhai-io/natural-language-agreements](https://github.com/arkhai-io/natural-language-agreements)
+* de-redis-clients: [https://github.com/arkhai-io/de-redis-clients](https://github.com/arkhai-io/de-redis-clients)
 
 **Alkahest Docs MCP Server** — give your AI coding assistant direct access to Alkahest docs, contract ABIs, SDK methods, and deployment addresses:
 
@@ -69,18 +69,18 @@ clawhub install alkahest-developer
 
 clawhub install alkahest-user
 
-Skills are also available as SKILL.md files in the docs/skills/ directory of each repo.
+Skills are also available as [SKILL.md](http://SKILL.md) files in the docs/skills/ directory of each repo.
 
-**Starter Packet (quickstart guide):** https://gist.github.com/mlegls/1599650b8998fd12ca3a8e1261accbce
+**Starter Packet (quickstart guide):**[https://gist.github.com/mlegls/1599650b8998fd12ca3a8e1261accbce](https://gist.github.com/mlegls/1599650b8998fd12ca3a8e1261accbce)
 
 **Local development:** All SDKs include a utility for deploying the full escrow ecosystem to Anvil — no testnet required to get started.
 
 ## Deliverables
 
-- GitHub repository with source code
-- Detailed README with setup and installation procedures
-- Demo video (3–5 minutes) showing the project working end-to-end
-- Deployment (local Anvil, testnet, or mainnet — any is acceptable)
+* GitHub repository with source code
+* Detailed README with setup and installation procedures
+* Demo video (3–5 minutes) showing the project working end-to-end
+* Deployment (local Anvil, testnet, or mainnet — any is acceptable)
 
 ## Jugement Criteria
 
