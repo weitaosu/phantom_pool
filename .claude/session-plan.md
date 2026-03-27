@@ -1,41 +1,35 @@
-# Session Plan
+# Session Plan v2.0
 
 **Created:** 2026-03-27
 **Intent Contract:** See .claude/session-intent.md
 
 ## What You'll End Up With
-A working dark pool MVP for Polymarket: commit-reveal smart contracts on Polygon (+ Tron + Solana ports), an off-chain matching engine, iceberg execution via Polymarket CLOB, and a Telegram/OpenAI RFQ bot — all ready to demo in 48 hours.
+A unified agentic dark pool platform targeting 9 bounties ($9,000 pool) across Polymarket, Arkhai, Solana (3 bounties), TRON (2 bounties), Gemini, and Filecoin. Core: news-driven trading agent + Alkahest conditional escrow + x402 payments + DFlow settlement.
 
 ## Phase Weights
-- Discover: 5% — ecosystem already known (Polymarket, CTF Exchange, Polymarket CLOB API)
-- Define: 15% — clarify matching algorithm, privacy boundaries, multi-chain scope
-- Develop: 65% — contracts, matching engine, bot, iceberg queue, multi-chain ports
-- Deliver: 15% — testing, demo script, track submissions
+- Discover: 0% — all bounty requirements now read and analyzed
+- Define: 0% — scope locked, full plan written
+- Develop: 80% — implement per Section 17's P0→P4 priority schedule
+- Deliver: 20% — demo prep, backtest logs, per-bounty submissions
+
+## Priority Order
+P0: Matching engine + bot + Polymarket CLOB
+P1: News agent, Gemini feed, Alkahest escrow
+P2: TRON DeFi demo, Solana DFlow settlement
+P3: x402 (Solana + TRON), Filecoin logging
+P4: Swig smart accounts (cut if behind at hour 18)
 
 ## Execution Commands
-To execute this plan, run:
 ```bash
-/octo:embrace "Build dark pool MVP for Polymarket with commit-reveal contracts, matching engine, iceberg execution, and Telegram/OpenAI bot for Penn Hackathon"
+/octo:develop "implement the dark pool platform per plan.md, starting with P0 core matching engine"
 ```
 
-Or execute phases individually:
-- `/octo:develop` (primary — 65% weight)
-- `/octo:deliver` (testing + demo prep)
-
-## Provider Requirements
-🔴 Codex CLI: Available ✓
-🟡 Gemini CLI: Available ✓
-🔵 Claude: Available ✓
-
 ## Success Criteria
-- Commit-reveal contract deployed on Polygon Mumbai testnet
-- Telegram bot accepts natural language orders and submits to contract
-- Matching engine pairs buyers/sellers and settles through Polymarket
-- Iceberg queue executes residual orders as small slices
-- Tron and Solana contracts deployed for track eligibility
-- Demo video showing full flow (commit → match → settle → iceberg)
+- 9 bounty submissions with working demos
+- Each submission has: deployed contract/program, demo video, README
+- Core flow: news signal → dark pool order → Alkahest settle → verified on-chain
 
 ## Next Steps
-1. Review `plan.md` in project root
-2. Assign workstreams per Section 13 (Team Workstreams)
-3. Execute with `/octo:embrace` or start directly from Section 12 (48h phases)
+1. Start with P0: matching engine + DarkPoolArbiter.sol + Telegram bot
+2. Parallelize P1: news agent + Gemini feed + Alkahest listener
+3. Hit P2-P3 based on team bandwidth
