@@ -68,9 +68,9 @@ export function createOrderRoutes(deps: OrderRouteDeps): Router {
         estimatedMatchTime: order.state === OrderState.MATCHED ? 0 : 600,
       };
 
-      if (order.matchedSize) {
-        response.matchedSize = order.matchedSize.toString();
-        response.matchedPrice = order.matchedPriceBps;
+      if ((order as any).matchedSize) {
+        response.matchedSize = (order as any).matchedSize.toString();
+        response.matchedPrice = (order as any).matchedPriceBps;
       }
 
       res.status(201).json(response);
