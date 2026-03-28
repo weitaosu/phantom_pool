@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bloomberg 2099 — Dark Pool Terminal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0a;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    color: #c8c8c8;
+    min-height: 100vh;
+    padding: 28px;
+    overflow: hidden;
+  }
+
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .terminal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #2a2a2a;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+  }
+
+  .terminal-title {
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: #FF8C00;
+    text-shadow: 0 0 6px rgba(255,140,0,0.5);
+  }
+
+  .terminal-status {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: #444;
+  }
+
+  .terminal-status .live {
+    color: #39FF14;
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  /* Grid layout */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 12px;
+  }
+
+  .panel {
+    border: 1px solid #1e1e1e;
+    padding: 14px;
+    background: #0d0d0d;
+    position: relative;
+  }
+
+  .panel-label {
+    font-size: 8px;
+    letter-spacing: 3px;
+    color: #444;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #1a1a1a;
+    padding-bottom: 6px;
+  }
+
+  /* Ticker table */
+  .ticker-row {
+    display: grid;
+    grid-template-columns: 60px 1fr 70px 50px;
+    gap: 4px;
+    font-size: 10px;
+    padding: 4px 0;
+    border-bottom: 1px solid #111;
+    align-items: center;
+  }
+
+  .ticker-row:last-child { border-bottom: none; }
+
+  .sym { color: #FF8C00; font-weight: 600; font-size: 11px; }
+  .price { color: #e8e8e8; text-align: right; }
+  .chg.up { color: #39FF14; text-align: right; }
+  .chg.dn { color: #FF4444; text-align: right; }
+  .vol { color: #555; font-size: 9px; text-align: right; }
+
+  /* Alert badge */
+  .alert {
+    display: inline-block;
+    padding: 1px 5px;
+    font-size: 8px;
+    letter-spacing: 1px;
+    background: #FF4444;
+    color: #fff;
+    text-transform: uppercase;
+    margin-left: 4px;
+    animation: alertFlash 2s ease-in-out infinite;
+  }
+
+  @keyframes alertFlash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Trade log */
+  .log-line {
+    font-size: 9px;
+    padding: 3px 0;
+    border-bottom: 1px solid #0f0f0f;
+    color: #555;
+    letter-spacing: 0.5px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .log-line .ts { color: #333; min-width: 54px; }
+  .log-line .type-buy { color: #39FF14; }
+  .log-line .type-sell { color: #FF4444; }
+  .log-line .highlight { color: #FF8C00; }
+
+  .log-line.new {
+    animation: newTrade 0.4s ease-out;
+  }
+
+  @keyframes newTrade {
+    0% { background: rgba(255, 140, 0, 0.2); color: #FF8C00; }
+    100% { background: transparent; color: #555; }
+  }
+
+  /* CRT Flicker toast */
+  .toast {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    background: #0d0d0d;
+    border: 1px solid #FF8C00;
+    padding: 10px 18px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #FF8C00;
+    text-transform: uppercase;
+    opacity: 0;
+    pointer-events: none;
+    text-shadow: 0 0 6px rgba(255,140,0,0.8);
+    box-shadow: 0 0 20px rgba(255,140,0,0.15);
+  }
+
+  .toast.show {
+    animation: crtFlicker 0.7s ease-out forwards;
+  }
+
+  @keyframes crtFlicker {
+    0%   { opacity: 0; transform: scaleX(1.02); filter: brightness(3); }
+    8%   { opacity: 1; filter: brightness(0.3); }
+    16%  { opacity: 1; filter: brightness(2); }
+    24%  { opacity: 1; filter: brightness(0.8); }
+    100% { opacity: 1; filter: brightness(1); transform: scaleX(1); }
+  }
+
+  /* Depth bars */
+  .depth-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 3px;
+    font-size: 9px;
+  }
+
+  .depth-price { color: #555; min-width: 52px; text-align: right; }
+  .depth-bar-wrap { flex: 1; height: 8px; background: #111; position: relative; }
+  .depth-bar { height: 100%; }
+  .depth-bar.bid { background: rgba(57, 255, 20, 0.4); }
+  .depth-bar.ask { background: rgba(255, 68, 68, 0.4); }
+  .depth-size { color: #444; min-width: 44px; font-size: 8px; }
+
+  /* Execute button */
+  .exec-btn {
+    margin-top: 12px;
+    width: 100%;
+    padding: 8px;
+    background: transparent;
+    border: 1px solid #FF8C00;
+    color: #FF8C00;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .exec-btn:hover {
+    background: rgba(255, 140, 0, 0.1);
+    box-shadow: 0 0 16px rgba(255,140,0,0.2);
+  }
+</style>
+</head>
+<body>
+
+<div class="terminal-header">
+  <div class="terminal-title">DARKPOOL TERMINAL · v4.1.0</div>
+  <div class="terminal-status"><span class="live">■ LIVE</span> &nbsp; 2026-03-27 · 14:32:07 UTC</div>
+</div>
+
+<div class="grid">
+
+  <!-- Ticker Panel -->
+  <div class="panel">
+    <div class="panel-label">Market Feed</div>
+    <div class="ticker-row">
+      <span class="sym">BTC</span>
+      <span></span>
+      <span class="price">87,442.10</span>
+      <span class="chg up">+1.24%</span>
+    </div>
+    <div class="ticker-row">
+      <span class="sym">ETH</span>
+      <span class="alert">ALERT</span>
+      <span class="price">3,218.40</span>
+      <span class="chg dn">−2.87%</span>
+    </div>
+    <div class="ticker-row">
+      <span class="sym">SOL</span>
+      <span></span>
+      <span class="price">142.08</span>
+      <span class="chg up">+0.61%</span>
+    </div>
+    <div class="ticker-row">
+      <span class="sym">ARB</span>
+      <span></span>
+      <span class="price">1.2340</span>
+      <span class="chg dn">−0.42%</span>
+    </div>
+    <button class="exec-btn" onclick="triggerMatch()">MATCH OFF-CHAIN →</button>
+  </div>
+
+  <!-- Depth Panel -->
+  <div class="panel">
+    <div class="panel-label">Order Depth · BTC</div>
+    <div class="depth-row">
+      <span class="depth-price" style="color:#39FF14">87,500</span>
+      <div class="depth-bar-wrap"><div class="depth-bar bid" style="width:82%"></div></div>
+      <span class="depth-size">412K</span>
+    </div>
+    <div class="depth-row">
+      <span class="depth-price" style="color:#39FF14">87,480</span>
+      <div class="depth-bar-wrap"><div class="depth-bar bid" style="width:55%"></div></div>
+      <span class="depth-size">218K</span>
+    </div>
+    <div class="depth-row">
+      <span class="depth-price" style="color:#444">87,442</span>
+      <div class="depth-bar-wrap"><div style="height:1px;background:#333;margin-top:4px"></div></div>
+      <span class="depth-size" style="color:#FF8C00">LAST</span>
+    </div>
+    <div class="depth-row">
+      <span class="depth-price" style="color:#FF4444">87,400</span>
+      <div class="depth-bar-wrap"><div class="depth-bar ask" style="width:70%"></div></div>
+      <span class="depth-size">290K</span>
+    </div>
+    <div class="depth-row">
+      <span class="depth-price" style="color:#FF4444">87,360</span>
+      <div class="depth-bar-wrap"><div class="depth-bar ask" style="width:38%"></div></div>
+      <span class="depth-size">95K</span>
+    </div>
+  </div>
+
+  <!-- Trade Log (spans both columns) -->
+  <div class="panel" style="grid-column: 1/-1">
+    <div class="panel-label">Execution Log · Off-Chain Dark Fills</div>
+    <div id="logContainer">
+      <div class="log-line"><span class="ts">14:32:01</span><span class="type-buy">BUY </span><span class="highlight">BTC</span><span>2.400  @87,440  [DARK·MATCHED]  SLIPPAGE:0.002%</span></div>
+      <div class="log-line"><span class="ts">14:31:58</span><span class="type-sell">SELL</span><span class="highlight">ETH</span><span>18.00  @3,219   [DARK·MATCHED]  SLIPPAGE:0.005%</span></div>
+      <div class="log-line"><span class="ts">14:31:44</span><span class="type-buy">BUY </span><span class="highlight">SOL</span><span>140.0  @142.05  [DARK·MATCHED]  SLIPPAGE:0.001%</span></div>
+      <div class="log-line"><span class="ts">14:31:30</span><span class="type-sell">SELL</span><span class="highlight">BTC</span><span>1.200  @87,438  [DARK·MATCHED]  SLIPPAGE:0.003%</span></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast">✓ DARK FILL EXECUTED</div>
+
+<script>
+const sides = ['BUY ', 'SELL'];
+const syms = ['BTC', 'ETH', 'SOL', 'ARB'];
+const prices = { BTC: '87,44', ETH: '3,21', SOL: '142.', ARB: '1.23' };
+
+function triggerMatch() {
+  const toast = document.getElementById('toast');
+  toast.classList.remove('show');
+  void toast.offsetWidth;
+  toast.classList.add('show');
+
+  const side = sides[Math.floor(Math.random() * 2)];
+  const sym = syms[Math.floor(Math.random() * syms.length)];
+  const size = (Math.random() * 10 + 1).toFixed(2);
+  const now = new Date().toISOString().substr(11, 8);
+
+  const container = document.getElementById('logContainer');
+  const line = document.createElement('div');
+  line.className = 'log-line new';
+  line.innerHTML = `<span class="ts">${now}</span><span class="type-${side.trim().toLowerCase()}">${side}</span><span class="highlight">${sym}</span><span>${size}  [DARK·MATCHED]  SLIPPAGE:0.00${Math.floor(Math.random()*9)+1}%</span>`;
+  container.insertBefore(line, container.firstChild);
+  if (container.children.length > 6) container.lastChild.remove();
+}
+</script>
+</body>
+</html>

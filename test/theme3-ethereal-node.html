@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ethereal Node — Dark Pool Intelligence</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #050a1a;
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    color: #c8d8f0;
+    min-height: 100vh;
+    overflow: hidden;
+    position: relative;
+  }
+
+  canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+  }
+
+  .ui {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px;
+    gap: 20px;
+    min-height: 100vh;
+  }
+
+  h1 {
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, #7b5ea7, #4fa8c7, #7b5ea7);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 4s linear infinite;
+  }
+
+  @keyframes shimmer {
+    to { background-position: 200% center; }
+  }
+
+  /* Card */
+  .card {
+    background: rgba(10, 18, 40, 0.7);
+    border: 1px solid rgba(123, 94, 167, 0.25);
+    border-radius: 16px;
+    padding: 20px 24px;
+    width: 360px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  .card-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: rgba(123, 94, 167, 0.7);
+    margin-bottom: 14px;
+  }
+
+  /* Sentiment heatmap */
+  .news-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .news-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 10px;
+    border: 1px solid transparent;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .news-item::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    opacity: 0.12;
+  }
+
+  .news-item.bullish::before { background: #39FF14; }
+  .news-item.bearish::before { background: #FF4444; }
+  .news-item.neutral::before { background: #7b5ea7; }
+
+  .news-item.bullish { border-color: rgba(57,255,20,0.2); box-shadow: 0 0 12px rgba(57,255,20,0.1); }
+  .news-item.bearish { border-color: rgba(255,68,68,0.2); box-shadow: 0 0 12px rgba(255,68,68,0.1); }
+  .news-item.neutral { border-color: rgba(123,94,167,0.2); }
+
+  .news-text { color: rgba(200,216,240,0.8); line-height: 1.4; flex: 1; }
+  .sentiment-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    margin-left: 8px; flex-shrink: 0;
+  }
+  .bullish .sentiment-dot { background: #39FF14; box-shadow: 0 0 8px #39FF14; }
+  .bearish .sentiment-dot { background: #FF4444; box-shadow: 0 0 8px #FF4444; }
+  .neutral .sentiment-dot { background: #7b5ea7; box-shadow: 0 0 8px #7b5ea7; }
+
+  /* Node graph area */
+  .node-area {
+    width: 100%;
+    height: 80px;
+    position: relative;
+  }
+
+  svg.nodes { width: 100%; height: 100%; overflow: visible; }
+
+  /* 3D recessed button */
+  .btn-3d {
+    width: 100%;
+    padding: 11px;
+    background: linear-gradient(180deg, rgba(79,168,199,0.12) 0%, rgba(40,80,120,0.08) 100%);
+    border: 1px solid rgba(79,168,199,0.25);
+    border-bottom: 3px solid rgba(0,0,0,0.4);
+    border-radius: 10px;
+    color: #4fa8c7;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 8px rgba(0,0,0,0.3);
+    transition: all 0.12s;
+    position: relative;
+    top: 0;
+  }
+
+  .btn-3d:active, .btn-3d.pressed {
+    top: 2px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+    border-bottom: 1px solid rgba(0,0,0,0.4);
+  }
+
+  /* Atomic settlement sequence */
+  .settle-seq {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: rgba(200,216,240,0.5);
+  }
+
+  .settle-step {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 20px;
+    border: 1px solid rgba(123,94,167,0.2);
+    background: rgba(123,94,167,0.06);
+    transition: all 0.5s;
+    white-space: nowrap;
+  }
+
+  .settle-step.active {
+    border-color: rgba(79,168,199,0.6);
+    background: rgba(79,168,199,0.1);
+    color: #4fa8c7;
+    box-shadow: 0 0 12px rgba(79,168,199,0.2);
+  }
+
+  .settle-step.done {
+    border-color: rgba(57,255,20,0.4);
+    background: rgba(57,255,20,0.06);
+    color: #39FF14;
+  }
+
+  .settle-arrow { color: rgba(123,94,167,0.4); }
+</style>
+</head>
+<body>
+
+<canvas id="particles"></canvas>
+
+<div class="ui">
+  <h1>Ethereal Node · Dark Pool Intelligence</h1>
+
+  <!-- AI Sentiment Heatmap -->
+  <div class="card">
+    <div class="card-label">AI Sentiment · News Feed</div>
+    <div class="news-list">
+      <div class="news-item bullish">
+        <span class="news-text">Fed signals rate pause — crypto ETFs rally</span>
+        <span class="sentiment-dot"></span>
+      </div>
+      <div class="news-item bearish">
+        <span class="news-text">SEC investigating stablecoin reserves</span>
+        <span class="sentiment-dot"></span>
+      </div>
+      <div class="news-item bullish">
+        <span class="news-text">BlackRock BTC holdings up 12% this quarter</span>
+        <span class="sentiment-dot"></span>
+      </div>
+      <div class="news-item neutral">
+        <span class="news-text">DeFi TVL steady at $88B amid uncertainty</span>
+        <span class="sentiment-dot"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Node Connection Graph -->
+  <div class="card">
+    <div class="card-label">Knowledge Graph · Live Signals</div>
+    <div class="node-area">
+      <svg class="nodes" id="nodesvg" viewBox="0 0 340 80"></svg>
+    </div>
+    <button class="btn-3d" id="settleBtn" onclick="runSettle()">INITIATE ATOMIC SETTLEMENT</button>
+  </div>
+
+  <!-- Atomic Settlement Steps -->
+  <div class="card">
+    <div class="card-label">Settlement Sequence</div>
+    <div class="settle-seq">
+      <div class="settle-step" id="s1">🔐 Lock</div>
+      <span class="settle-arrow">→</span>
+      <div class="settle-step" id="s2">⚡ Verify</div>
+      <span class="settle-arrow">→</span>
+      <div class="settle-step" id="s3">🔑 Unlock</div>
+      <span class="settle-arrow">→</span>
+      <div class="settle-step" id="s4">✓ Done</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ——— Particle constellation ———
+const canvas = document.getElementById('particles');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const pts = Array.from({length: 60}, () => ({
+  x: Math.random() * canvas.width,
+  y: Math.random() * canvas.height,
+  vx: (Math.random() - 0.5) * 0.25,
+  vy: (Math.random() - 0.5) * 0.25,
+  r: Math.random() * 1.5 + 0.5
+}));
+
+function drawParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // connections
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 1; j < pts.length; j++) {
+      const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < 130) {
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(123,94,167,${0.18 * (1 - d/130)})`;
+        ctx.lineWidth = 0.5;
+        ctx.moveTo(pts[i].x, pts[i].y);
+        ctx.lineTo(pts[j].x, pts[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  // dots
+  pts.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(123,94,167,0.6)';
+    ctx.fill();
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+  });
+  requestAnimationFrame(drawParticles);
+}
+drawParticles();
+
+// ——— Node SVG ———
+const svg = document.getElementById('nodesvg');
+const nodes = [
+  {id:'news', x:30, y:40, label:'News'},
+  {id:'ai',   x:130, y:20, label:'AI'},
+  {id:'pool', x:170, y:55, label:'Pool'},
+  {id:'exec', x:260, y:35, label:'Exec'},
+  {id:'chain',x:310, y:55, label:'Chain'},
+];
+const edges = [['news','ai'],['ai','pool'],['pool','exec'],['exec','chain'],['ai','exec']];
+
+edges.forEach(([a, b]) => {
+  const na = nodes.find(n=>n.id===a), nb = nodes.find(n=>n.id===b);
+  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1', na.x); line.setAttribute('y1', na.y);
+  line.setAttribute('x2', nb.x); line.setAttribute('y2', nb.y);
+  line.setAttribute('stroke','rgba(79,168,199,0.18)');
+  line.setAttribute('stroke-width','1');
+  svg.appendChild(line);
+
+  // Animated pulse on edge
+  const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  circle.setAttribute('r','2.5');
+  circle.setAttribute('fill','#4fa8c7');
+  circle.setAttribute('opacity','0.8');
+  const anim = document.createElementNS('http://www.w3.org/2000/svg','animateMotion');
+  anim.setAttribute('dur', `${2 + Math.random()*2}s`);
+  anim.setAttribute('repeatCount','indefinite');
+  anim.setAttribute('path',`M${na.x},${na.y} L${nb.x},${nb.y}`);
+  circle.appendChild(anim);
+  svg.appendChild(circle);
+});
+
+nodes.forEach(n => {
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  c.setAttribute('cx', n.x); c.setAttribute('cy', n.y); c.setAttribute('r','7');
+  c.setAttribute('fill','rgba(79,168,199,0.15)');
+  c.setAttribute('stroke','rgba(79,168,199,0.5)');
+  c.setAttribute('stroke-width','1');
+  const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+  t.setAttribute('x', n.x); t.setAttribute('y', n.y + 18);
+  t.setAttribute('text-anchor','middle');
+  t.setAttribute('fill','rgba(200,216,240,0.5)');
+  t.setAttribute('font-size','7');
+  t.setAttribute('letter-spacing','1');
+  t.textContent = n.label.toUpperCase();
+  g.appendChild(c); g.appendChild(t);
+  svg.appendChild(g);
+});
+
+// ——— Atomic Settlement Sequence ———
+function runSettle() {
+  const btn = document.getElementById('settleBtn');
+  btn.classList.add('pressed');
+  const steps = ['s1','s2','s3','s4'];
+  steps.forEach(s => { document.getElementById(s).className = 'settle-step'; });
+
+  steps.forEach((s, i) => {
+    setTimeout(() => {
+      if (i > 0) document.getElementById(steps[i-1]).classList.add('done');
+      document.getElementById(s).classList.add('active');
+    }, i * 600);
+  });
+
+  setTimeout(() => {
+    document.getElementById('s4').classList.remove('active');
+    document.getElementById('s4').classList.add('done');
+    btn.classList.remove('pressed');
+  }, steps.length * 600);
+}
+</script>
+</body>
+</html>

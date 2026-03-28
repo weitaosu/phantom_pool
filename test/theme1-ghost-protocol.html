@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ghost Protocol — Dark Pool</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #050505;
+    font-family: 'Courier New', monospace;
+    color: #00F3FF;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 32px;
+  }
+
+  h1 {
+    font-size: 13px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: #39FF14;
+    text-shadow: 0 0 12px #39FF14, 0 0 30px #39FF14aa;
+    margin-bottom: 8px;
+  }
+
+  /* Glassmorphism card */
+  .glass {
+    background: rgba(0, 243, 255, 0.04);
+    border: 1px solid rgba(0, 243, 255, 0.15);
+    border-radius: 12px;
+    backdrop-filter: blur(12px);
+    padding: 20px 28px;
+    width: 360px;
+    box-shadow: 0 0 24px rgba(0, 243, 255, 0.08), inset 0 0 12px rgba(0, 243, 255, 0.04);
+  }
+
+  .label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: rgba(0, 243, 255, 0.5);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  /* Iceberg viz */
+  .iceberg-wrap {
+    width: 100%;
+    height: 120px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 6px;
+  }
+
+  .waterline {
+    position: absolute;
+    top: 50%;
+    width: 100%;
+    height: 1px;
+    background: rgba(0, 243, 255, 0.3);
+    box-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
+  }
+
+  .waterline::after {
+    content: 'ON-CHAIN';
+    position: absolute;
+    right: 8px;
+    top: -16px;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: rgba(0, 243, 255, 0.5);
+  }
+
+  .iceberg-ghost {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 80px;
+    background: linear-gradient(to bottom, transparent, rgba(0, 243, 255, 0.06));
+    clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+  }
+
+  .iceberg-tip {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 30px;
+    background: rgba(0, 243, 255, 0.15);
+    clip-path: polygon(10% 100%, 90% 100%, 50% 0%);
+    box-shadow: 0 0 16px rgba(0, 243, 255, 0.5);
+  }
+
+  /* Pulsing dots (sliced orders) */
+  .dots {
+    position: absolute;
+    top: 44%;
+    display: flex;
+    gap: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #39FF14;
+    box-shadow: 0 0 8px #39FF14;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+
+  .dot:nth-child(2) { animation-delay: 0.3s; }
+  .dot:nth-child(3) { animation-delay: 0.6s; }
+  .dot:nth-child(4) { animation-delay: 0.9s; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.4); }
+  }
+
+  /* Stat rows */
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0, 243, 255, 0.07);
+    font-size: 12px;
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-key { color: rgba(0, 243, 255, 0.5); font-size: 10px; letter-spacing: 1px; }
+  .stat-val { color: #39FF14; text-shadow: 0 0 8px #39FF14aa; }
+  .stat-val.blue { color: #00F3FF; text-shadow: 0 0 8px #00F3FFaa; }
+
+  /* Match event */
+  .match-btn {
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid rgba(57, 255, 20, 0.3);
+    border-radius: 6px;
+    color: #39FF14;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-shadow: 0 0 8px #39FF14;
+    box-shadow: 0 0 12px rgba(57, 255, 20, 0.1);
+    transition: all 0.2s;
+  }
+
+  .match-btn:hover {
+    background: rgba(57, 255, 20, 0.08);
+    box-shadow: 0 0 24px rgba(57, 255, 20, 0.3);
+  }
+
+  .match-btn.matched {
+    animation: darkMatch 0.8s ease-out forwards;
+  }
+
+  @keyframes darkMatch {
+    0% { box-shadow: 0 0 0px rgba(57, 255, 20, 0); }
+    30% { box-shadow: 0 0 40px rgba(57, 255, 20, 0.8), 0 0 80px rgba(57, 255, 20, 0.3); }
+    100% { box-shadow: 0 0 12px rgba(57, 255, 20, 0.15); }
+  }
+
+  .ripple-container {
+    position: relative;
+    width: 100%;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .shape {
+    width: 28px; height: 28px;
+    border: 1.5px solid rgba(0, 243, 255, 0.6);
+    border-radius: 4px;
+    transform: rotate(45deg);
+    transition: all 0.6s ease;
+    position: absolute;
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.4);
+  }
+
+  .shape.left  { transform: translateX(-22px) rotate(45deg); }
+  .shape.right { transform: translateX(22px) rotate(45deg); }
+
+  .shape.merge-left  { transform: translateX(-2px) rotate(45deg) scale(1.1); opacity: 0.5; }
+  .shape.merge-right { transform: translateX(2px) rotate(45deg) scale(1.1); opacity: 0.5; }
+</style>
+</head>
+<body>
+
+<h1>Ghost Protocol · Dark Pool</h1>
+
+<!-- Iceberg Order Card -->
+<div class="glass">
+  <div class="label">Iceberg Order · BTC/USD</div>
+  <div class="iceberg-wrap">
+    <div class="waterline"></div>
+    <div class="iceberg-ghost"></div>
+    <div class="iceberg-tip"></div>
+    <div class="dots">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Stats Card -->
+<div class="glass">
+  <div class="label">Order Book · Depth</div>
+  <div class="stat-row">
+    <span class="stat-key">Total Size</span>
+    <span class="stat-val blue">2,400,000 USDC</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-key">Visible Slice</span>
+    <span class="stat-val">50,000 USDC</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-key">Off-Chain Matched</span>
+    <span class="stat-val">1,750,000 USDC</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-key">Slippage</span>
+    <span class="stat-val">0.003%</span>
+  </div>
+</div>
+
+<!-- Dark Match -->
+<div class="glass">
+  <div class="label">Dark Match Engine</div>
+  <div class="ripple-container">
+    <div class="shape left" id="sl"></div>
+    <div class="shape right" id="sr"></div>
+  </div>
+  <button class="match-btn" id="matchBtn" onclick="triggerMatch()">EXECUTE DARK MATCH</button>
+</div>
+
+<script>
+function triggerMatch() {
+  const btn = document.getElementById('matchBtn');
+  const sl = document.getElementById('sl');
+  const sr = document.getElementById('sr');
+  btn.classList.add('matched');
+  sl.classList.add('merge-left');
+  sr.classList.add('merge-right');
+  btn.textContent = '✓ MATCHED OFF-CHAIN';
+  setTimeout(() => {
+    btn.classList.remove('matched');
+    sl.classList.remove('merge-left');
+    sr.classList.remove('merge-right');
+    btn.textContent = 'EXECUTE DARK MATCH';
+  }, 2400);
+}
+</script>
+</body>
+</html>

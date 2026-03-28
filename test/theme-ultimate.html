@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PHANTOM POOL · Dark Intelligence Terminal</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&display=swap');
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --black:   #030508;
+  --navy:    #060d1a;
+  --glass:   rgba(5, 12, 28, 0.72);
+  --border:  rgba(0, 220, 255, 0.10);
+  --cyan:    #00DCFF;
+  --green:   #39FF14;
+  --amber:   #FF8C00;
+  --red:     #FF3A3A;
+  --purple:  #7b5ea7;
+  --teal:    #4fa8c7;
+}
+
+html, body { width:100%; height:100%; overflow:hidden; }
+
+body {
+  background: var(--black);
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  color: #b8cfe0;
+  position: relative;
+}
+
+/* ── Scanline overlay ── */
+body::after {
+  content:'';
+  position:fixed; inset:0; z-index:999; pointer-events:none;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 3px,
+    rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px
+  );
+}
+
+/* ── Stealth overlay ── */
+#stealthOverlay {
+  position:fixed; inset:0; z-index:998; pointer-events:none;
+  background: rgba(0,0,0,0);
+  transition: background 0.6s ease;
+}
+body.stealth #stealthOverlay { background: rgba(0,0,0,0.94); }
+
+canvas#bg { position:fixed; inset:0; z-index:0; }
+
+/* ── Layout ── */
+.shell {
+  position:relative; z-index:1;
+  display:grid;
+  grid-template-rows: 42px 1fr;
+  height:100vh;
+  padding:0;
+}
+
+/* ── Top Bar ── */
+.topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 20px;
+  border-bottom:1px solid var(--border);
+  background: rgba(3,5,8,0.9);
+}
+
+.topbar-left { display:flex; align-items:center; gap:18px; }
+
+.logo {
+  font-size:11px; font-weight:600; letter-spacing:5px; text-transform:uppercase;
+  background: linear-gradient(90deg, var(--cyan), var(--purple), var(--teal));
+  background-size:200% auto;
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  animation: shimmer 5s linear infinite;
+}
+@keyframes shimmer { to { background-position:200% center; } }
+
+.live-dot {
+  width:6px; height:6px; border-radius:50%; background:var(--green);
+  box-shadow:0 0 8px var(--green);
+  animation: blink 1.2s step-end infinite;
+}
+@keyframes blink { 50%{opacity:0;} }
+
+.clock { font-size:9px; letter-spacing:2px; color:rgba(0,220,255,0.35); }
+
+.topbar-right { display:flex; gap:10px; }
+
+.tag {
+  font-size:8px; letter-spacing:2px; padding:3px 8px;
+  border:1px solid; border-radius:2px; cursor:pointer;
+  text-transform:uppercase; transition:all 0.2s;
+}
+.tag.cyan  { border-color:rgba(0,220,255,0.3); color:var(--cyan); }
+.tag.amber { border-color:rgba(255,140,0,0.3); color:var(--amber); }
+.tag.stealth-btn { border-color:rgba(123,94,167,0.4); color:var(--purple); }
+.tag:hover { filter:brightness(1.5); }
+
+/* ── Main area ── */
+.main {
+  display:grid;
+  grid-template-columns: 260px 1fr 260px;
+  gap:0;
+  height:100%;
+  overflow:hidden;
+}
+
+/* ── Panels ── */
+.panel {
+  border-right:1px solid var(--border);
+  background:var(--glass);
+  backdrop-filter:blur(18px);
+  display:flex; flex-direction:column;
+  overflow:hidden;
+}
+.panel:last-child { border-right:none; border-left:1px solid var(--border); }
+
+.panel-head {
+  font-size:8px; letter-spacing:3px; text-transform:uppercase;
+  color:rgba(0,220,255,0.4);
+  padding:10px 14px 8px;
+  border-bottom:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.panel-body { flex:1; overflow:hidden; padding:12px 14px; display:flex; flex-direction:column; gap:10px; }
+
+/* ── Center ── */
+.center { border-right:none; border-left:none; background:transparent; }
+.center .panel-body { padding:16px; }
+
+/* ── Iceberg ── */
+.iceberg-scene {
+  position:relative; height:130px; overflow:hidden; border-radius:8px;
+  background:linear-gradient(to bottom, rgba(0,220,255,0.02), rgba(0,10,30,0.5));
+  border:1px solid rgba(0,220,255,0.08);
+}
+
+.waterline-wrap {
+  position:absolute; top:52%; width:100%; z-index:2;
+}
+.waterline {
+  width:100%; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(0,220,255,0.5), transparent);
+  box-shadow:0 0 8px rgba(0,220,255,0.4);
+}
+.wl-label {
+  position:absolute; right:10px; top:-14px;
+  font-size:7px; letter-spacing:2px; color:rgba(0,220,255,0.4);
+}
+.wl-label-below {
+  position:absolute; left:10px; top:6px;
+  font-size:7px; letter-spacing:2px; color:rgba(0,220,255,0.2);
+}
+
+.berg-ghost {
+  position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+  width:140px; height:90px;
+  background:linear-gradient(to bottom, transparent, rgba(0,220,255,0.06));
+  clip-path:polygon(18% 0%,82% 0%,100% 100%,0% 100%);
+  border-top:1px solid rgba(0,220,255,0.1);
+}
+
+.berg-tip {
+  position:absolute; top:14px; left:50%; transform:translateX(-50%);
+  width:44px; height:34px;
+  background:rgba(0,220,255,0.12);
+  clip-path:polygon(8% 100%,92% 100%,50% 0%);
+  animation:bergBreathe 3.5s ease-in-out infinite;
+}
+@keyframes bergBreathe {
+  0%,100% { box-shadow:0 0 16px rgba(0,220,255,0.25), 0 0 40px rgba(0,220,255,0.08); filter:brightness(1); }
+  50%     { box-shadow:0 0 32px rgba(0,220,255,0.6),  0 0 80px rgba(0,220,255,0.2);  filter:brightness(1.4); }
+}
+
+.pulse-row {
+  position:absolute; top:46%; left:0; right:0;
+  height:20px; z-index:3;
+}
+.pdot {
+  width:5px; height:5px; border-radius:50%;
+  background:var(--green); box-shadow:0 0 10px var(--green);
+  position:absolute;
+  animation:pdotCross 2.4s ease-in-out infinite;
+}
+.pdot:nth-child(1){left:30%; animation-delay:0s}
+.pdot:nth-child(2){left:42%; animation-delay:.6s}
+.pdot:nth-child(3){left:54%; animation-delay:1.2s}
+.pdot:nth-child(4){left:66%; animation-delay:1.8s}
+/* dots travel from just below waterline, cross it, fade out above */
+@keyframes pdotCross {
+  0%   { opacity:0;   transform:translateY(14px)  scale(.6); }
+  20%  { opacity:.9;  transform:translateY(6px)   scale(1); }
+  50%  { opacity:1;   transform:translateY(0px)   scale(1.3); box-shadow:0 0 14px var(--green); }
+  75%  { opacity:.5;  transform:translateY(-10px) scale(.9); }
+  100% { opacity:0;   transform:translateY(-20px) scale(.5); }
+}
+
+/* ── Dark Match ── */
+.match-area {
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  padding:14px;
+  border:1px solid var(--border); border-radius:8px;
+  background:rgba(0,220,255,0.02);
+}
+
+.shapes { display:flex; align-items:center; justify-content:center; gap:0; height:36px; position:relative; }
+
+.shape-box {
+  width:24px; height:24px; border-radius:4px;
+  border:1.5px solid rgba(0,220,255,0.5);
+  box-shadow:0 0 10px rgba(0,220,255,0.3);
+  transform:rotate(45deg);
+  transition: transform 0.55s cubic-bezier(.4,0,.2,1), opacity 0.55s, border-color 0.3s, box-shadow 0.3s;
+  position:absolute;
+}
+.shape-box.L { transform:translateX(-20px) rotate(45deg); }
+.shape-box.R { transform:translateX(20px) rotate(45deg); }
+.shape-box.mergeL { transform:translateX(-2px) rotate(45deg) scale(1.08); opacity:.6; }
+.shape-box.mergeR { transform:translateX(2px) rotate(45deg) scale(1.08); opacity:.6; }
+.shape-box.fadeout { opacity:0; transform:translateX(0) rotate(45deg) scale(0.5); }
+.shape-box.merged {
+  transform:rotate(45deg) scale(1.3);
+  border-color:var(--green);
+  box-shadow:0 0 28px var(--green), 0 0 70px rgba(57,255,20,0.3);
+  opacity:1;
+}
+
+.ripple {
+  position:absolute; width:0; height:0;
+  border-radius:50%; background:transparent;
+  border:1.5px solid rgba(57,255,20,0);
+  pointer-events:none;
+}
+.ripple.r2 { border-color:rgba(0,220,255,0); }
+.ripple.go  { animation:rippleOut  0.9s ease-out forwards; }
+.ripple.r2.go { animation:rippleOut2 1.2s ease-out 0.15s forwards; }
+@keyframes rippleOut {
+  0%   { width:0;     height:0;     border-color:rgba(57,255,20,0.9); opacity:1;  margin:0; }
+  100% { width:90px;  height:90px;  border-color:rgba(57,255,20,0);   opacity:0;  margin:-45px; }
+}
+@keyframes rippleOut2 {
+  0%   { width:0;     height:0;     border-color:rgba(0,220,255,0.6); opacity:1;  margin:0; }
+  100% { width:120px; height:120px; border-color:rgba(0,220,255,0);   opacity:0;  margin:-60px; }
+}
+
+.match-btn {
+  width:100%; padding:9px;
+  background:transparent;
+  border:1px solid rgba(57,255,20,0.3);
+  border-bottom:3px solid rgba(0,0,0,0.5);
+  border-radius:8px;
+  color:var(--green);
+  font-family:inherit; font-size:9px; letter-spacing:3px; text-transform:uppercase;
+  cursor:pointer;
+  text-shadow:0 0 8px var(--green);
+  box-shadow:0 0 14px rgba(57,255,20,0.08), inset 0 1px 0 rgba(255,255,255,0.04);
+  transition:all .15s;
+  position:relative; top:0;
+}
+.match-btn:hover { box-shadow:0 0 28px rgba(57,255,20,0.25); }
+.match-btn:active, .match-btn.pressed { top:2px; border-bottom:1px solid rgba(0,0,0,0.5); }
+
+/* ── CRT Toast ── */
+.toast {
+  position:fixed; top:52px; right:16px; z-index:200;
+  padding:9px 16px;
+  background:rgba(3,5,8,0.95);
+  border:1px solid var(--amber);
+  color:var(--amber);
+  font-size:9px; letter-spacing:3px; text-transform:uppercase;
+  text-shadow:0 0 8px var(--amber);
+  box-shadow:0 0 24px rgba(255,140,0,0.2);
+  opacity:0; pointer-events:none;
+}
+.toast.show { animation:crtFlicker 0.65s ease-out forwards; }
+@keyframes crtFlicker {
+  0%  { opacity:0; filter:brightness(4) blur(1px); }
+  8%  { opacity:1; filter:brightness(.3); }
+  18% { filter:brightness(2.5); }
+  30% { filter:brightness(.7); }
+  100%{ opacity:1; filter:brightness(1); }
+}
+
+/* ── Stats ── */
+.stat { display:flex; justify-content:space-between; font-size:10px; padding:5px 0; border-bottom:1px solid rgba(0,220,255,0.05); }
+.stat:last-child { border-bottom:none; }
+.sk { color:rgba(0,220,255,0.4); font-size:9px; letter-spacing:.5px; }
+.sv { color:var(--cyan); text-shadow:0 0 6px rgba(0,220,255,0.5); }
+.sv.g { color:var(--green); text-shadow:0 0 6px rgba(57,255,20,0.5); }
+.sv.r { color:var(--red); }
+.sv.a { color:var(--amber); }
+
+/* ── Sentiment ── */
+.news-item {
+  padding:7px 9px; border-radius:7px; border:1px solid transparent;
+  font-size:9px; line-height:1.5; position:relative; overflow:hidden;
+  display:flex; justify-content:space-between; align-items:center; gap:6px;
+}
+.news-item::before {
+  content:''; position:absolute; inset:0; border-radius:7px; opacity:.1;
+}
+.news-item.bull { border-color:rgba(57,255,20,.2); box-shadow:0 0 10px rgba(57,255,20,.06); }
+.news-item.bull::before { background:var(--green); }
+.news-item.bear { border-color:rgba(255,58,58,.2); box-shadow:0 0 10px rgba(255,58,58,.06); }
+.news-item.bear::before { background:var(--red); }
+.news-item.neut { border-color:rgba(123,94,167,.2); }
+.news-item.neut::before { background:var(--purple); }
+
+.sdot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.bull .sdot { background:var(--green); box-shadow:0 0 7px var(--green); }
+.bear .sdot { background:var(--red);   box-shadow:0 0 7px var(--red); }
+.neut .sdot { background:var(--purple); }
+
+/* ── Node graph ── */
+.node-wrap { position:relative; height:72px; }
+.node-wrap svg { width:100%; height:100%; overflow:visible; }
+
+/* ── Depth bars ── */
+.depth-row { display:flex; align-items:center; gap:6px; margin-bottom:3px; font-size:9px; }
+.dp { color:#334; min-width:52px; text-align:right; }
+.db-wrap { flex:1; height:7px; background:rgba(255,255,255,.04); border-radius:2px; overflow:hidden; }
+.db { height:100%; border-radius:2px; }
+.db.bid { background:rgba(57,255,20,.35); }
+.db.ask { background:rgba(255,58,58,.35); }
+.ds { color:#334; min-width:42px; font-size:8px; }
+
+/* ── Settlement ── */
+.settle-row {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:4px; flex-wrap:nowrap;
+}
+.ss {
+  flex:1; text-align:center; padding:5px 4px; border-radius:20px;
+  border:1px solid rgba(123,94,167,.2); font-size:8px; letter-spacing:.5px;
+  color:rgba(180,200,220,.4); transition:all .5s; white-space:nowrap;
+}
+.ss.active { border-color:rgba(79,168,199,.7); color:var(--teal); box-shadow:0 0 12px rgba(79,168,199,.2); }
+.ss.done   { border-color:rgba(57,255,20,.4);  color:var(--green); box-shadow:0 0 8px rgba(57,255,20,.15); }
+.sarr { color:rgba(123,94,167,.35); font-size:9px; }
+
+/* ── Exec log ── */
+.log-line {
+  font-size:8.5px; padding:3.5px 0; border-bottom:1px solid rgba(0,220,255,.04);
+  display:flex; gap:7px; color:#334;
+}
+.log-line .ts { color:#223; min-width:50px; }
+.log-line .buy  { color:var(--green); }
+.log-line .sell { color:var(--red); }
+.log-line .sym  { color:var(--amber); }
+.log-line.fresh { animation:freshLine .5s ease-out; }
+@keyframes freshLine { from { background:rgba(0,220,255,.12); color:var(--cyan); } to { background:transparent; } }
+
+/* ── Ticker row ── */
+.tick-row { display:grid; grid-template-columns:40px 1fr 68px 44px; gap:4px; font-size:10px; padding:4px 0; border-bottom:1px solid rgba(0,220,255,.05); align-items:center; }
+.tick-row:last-child{border-bottom:none;}
+.tsym { color:var(--amber); font-weight:600; font-size:10px; }
+.tpx  { color:#c8d8f0; text-align:right; }
+.tch.up { color:var(--green); text-align:right; }
+.tch.dn { color:var(--red);   text-align:right; }
+.alert-badge { font-size:7px; letter-spacing:1px; padding:1px 4px; background:var(--red); color:#fff; animation:flash 1.8s ease-in-out infinite; }
+@keyframes flash { 50%{opacity:.3;} }
+
+/* ── Scanning pulse ── */
+.scanning {
+  animation: scanPulse 2s ease-in-out infinite;
+}
+@keyframes scanPulse {
+  0%,100% { opacity:1; text-shadow:0 0 6px var(--green); }
+  50%     { opacity:.3; text-shadow:none; }
+}
+
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+<div id="stealthOverlay"></div>
+<div class="toast" id="toast">✓ DARK FILL EXECUTED</div>
+
+<div class="shell">
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="live-dot"></div>
+      <div class="logo">PHANTOM POOL · v2.0</div>
+      <div class="clock" id="clock">--:--:-- UTC</div>
+    </div>
+    <div class="topbar-right">
+      <div class="tag amber" onclick="addLog()">+ INJECT ORDER</div>
+      <div class="tag cyan"  onclick="triggerMatch()">DARK MATCH</div>
+      <div class="tag stealth-btn" onclick="toggleStealth()">⬛ STEALTH</div>
+    </div>
+  </header>
+
+  <!-- MAIN 3-COLUMN -->
+  <div class="main">
+
+    <!-- LEFT: Sentiment + Node -->
+    <div class="panel">
+      <div class="panel-head"><span>AI Sentiment</span><span class="scanning" style="color:#39FF14">● SCANNING</span></div>
+      <div class="panel-body">
+        <div class="news-item bull"><span>Fed pause — ETF inflows surge</span><span class="sdot"></span></div>
+        <div class="news-item bear"><span>SEC targets stablecoin issuers</span><span class="sdot"></span></div>
+        <div class="news-item bull"><span>BlackRock BTC +12% this quarter</span><span class="sdot"></span></div>
+        <div class="news-item neut"><span>DeFi TVL flat at $88B</span><span class="sdot"></span></div>
+        <div class="news-item bear"><span>Whale dump: 4,200 ETH moved</span><span class="sdot"></span></div>
+
+        <div class="panel-head" style="margin:0 -14px;padding:8px 14px;border-top:1px solid var(--border);">
+          <span>Knowledge Graph</span>
+        </div>
+        <div class="node-wrap">
+          <svg id="nodesvg" viewBox="0 0 232 72"></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: Iceberg + Match + Log -->
+    <div class="panel center">
+      <div class="panel-head"><span>Iceberg Engine · BTC/USD</span><span style="color:var(--amber)">87,442</span></div>
+      <div class="panel-body">
+
+        <!-- Iceberg -->
+        <div class="iceberg-scene">
+          <div class="berg-ghost"></div>
+          <div class="berg-tip"></div>
+          <div class="waterline-wrap">
+            <div class="wl-label">ON-CHAIN</div>
+            <div class="waterline"></div>
+            <div class="wl-label-below">OFF-CHAIN ▼</div>
+          </div>
+          <div class="pulse-row">
+            <div class="pdot"></div><div class="pdot"></div>
+            <div class="pdot"></div><div class="pdot"></div>
+          </div>
+        </div>
+
+        <!-- Stats row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div>
+            <div class="stat"><span class="sk">Total</span><span class="sv">2,400,000 USDC</span></div>
+            <div class="stat"><span class="sk">Visible</span><span class="sv">50,000 USDC</span></div>
+          </div>
+          <div>
+            <div class="stat"><span class="sk">Matched</span><span class="sv g">1,750,000</span></div>
+            <div class="stat"><span class="sk">Slippage</span><span class="sv g">0.003%</span></div>
+          </div>
+        </div>
+
+        <!-- Dark Match -->
+        <div class="match-area">
+          <div class="shapes">
+            <div class="ripple" id="ripple"></div>
+            <div class="ripple r2" id="ripple2"></div>
+            <div class="shape-box L" id="shL"></div>
+            <div class="shape-box R" id="shR"></div>
+          </div>
+          <button class="match-btn" id="matchBtn" onclick="triggerMatch()">EXECUTE DARK MATCH</button>
+        </div>
+
+        <!-- Settlement sequence -->
+        <div class="settle-row">
+          <div class="ss" id="s1">🔐 Lock</div><span class="sarr">›</span>
+          <div class="ss" id="s2">⚡ Verify</div><span class="sarr">›</span>
+          <div class="ss" id="s3">🔑 Release</div><span class="sarr">›</span>
+          <div class="ss" id="s4">✓ Settled</div>
+        </div>
+
+        <!-- Log -->
+        <div style="flex:1;overflow:hidden">
+          <div class="panel-head" style="margin:0 -16px;padding:6px 14px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+            <span>Execution Log</span>
+          </div>
+          <div id="log" style="margin-top:6px;overflow:hidden">
+            <div class="log-line"><span class="ts">14:32:01</span><span class="buy">BUY </span><span class="sym">BTC</span><span>2.40 @87,440 · DARK · 0.002%</span></div>
+            <div class="log-line"><span class="ts">14:31:58</span><span class="sell">SELL</span><span class="sym">ETH</span><span>18.0 @3,219 · DARK · 0.005%</span></div>
+            <div class="log-line"><span class="ts">14:31:44</span><span class="buy">BUY </span><span class="sym">SOL</span><span>140. @142.05 · DARK · 0.001%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Tickers + Depth -->
+    <div class="panel">
+      <div class="panel-head"><span>Market Feed</span></div>
+      <div class="panel-body">
+        <div class="tick-row"><span class="tsym">BTC</span><span></span><span class="tpx">87,442</span><span class="tch up">+1.24%</span></div>
+        <div class="tick-row"><span class="tsym">ETH</span><span class="alert-badge">⚠</span><span class="tpx">3,218</span><span class="tch dn">−2.87%</span></div>
+        <div class="tick-row"><span class="tsym">SOL</span><span></span><span class="tpx">142.08</span><span class="tch up">+0.61%</span></div>
+        <div class="tick-row"><span class="tsym">ARB</span><span></span><span class="tpx">1.234</span><span class="tch dn">−0.42%</span></div>
+        <div class="tick-row"><span class="tsym">AVAX</span><span></span><span class="tpx">38.41</span><span class="tch up">+2.10%</span></div>
+
+        <div class="panel-head" style="margin:4px -14px 0;padding:8px 14px;border-top:1px solid var(--border);">
+          <span>Order Depth · BTC</span>
+        </div>
+
+        <div class="depth-row"><span class="dp" style="color:var(--green)">87,500</span><div class="db-wrap"><div class="db bid" style="width:85%"></div></div><span class="ds">412K</span></div>
+        <div class="depth-row"><span class="dp" style="color:var(--green)">87,480</span><div class="db-wrap"><div class="db bid" style="width:56%"></div></div><span class="ds">218K</span></div>
+        <div class="depth-row" style="opacity:.5"><span class="dp">87,442</span><div class="db-wrap"><div style="height:1px;background:#1a2a1a;margin-top:3px"></div></div><span class="ds" style="color:var(--amber)">LAST</span></div>
+        <div class="depth-row"><span class="dp" style="color:var(--red)">87,400</span><div class="db-wrap"><div class="db ask" style="width:70%"></div></div><span class="ds">290K</span></div>
+        <div class="depth-row"><span class="dp" style="color:var(--red)">87,360</span><div class="db-wrap"><div class="db ask" style="width:38%"></div></div><span class="ds">95K</span></div>
+
+        <div class="panel-head" style="margin:4px -14px 0;padding:8px 14px;border-top:1px solid var(--border);">
+          <span>Session Stats</span>
+        </div>
+        <div class="stat"><span class="sk">Dark Fills</span><span class="sv g" id="statFills">1,247</span></div>
+        <div class="stat"><span class="sk">Avg Slippage</span><span class="sv g">0.0024%</span></div>
+        <div class="stat"><span class="sk">Volume</span><span class="sv" id="statVol">$847M</span></div>
+        <div class="stat"><span class="sk">Rejected</span><span class="sv r">3</span></div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<script>
+/* ── Clock ── */
+function tick() {
+  document.getElementById('clock').textContent =
+    new Date().toISOString().slice(11,19)+' UTC';
+}
+tick(); setInterval(tick, 1000);
+
+/* ── Particle constellation ── */
+const canvas = document.getElementById('bg');
+const ctx = canvas.getContext('2d');
+function resize() { canvas.width=innerWidth; canvas.height=innerHeight; }
+resize(); window.addEventListener('resize', resize);
+
+const PTS = Array.from({length:80}, ()=>({
+  x:Math.random()*innerWidth, y:Math.random()*innerHeight,
+  vx:(Math.random()-.5)*.2, vy:(Math.random()-.5)*.2,
+  r:Math.random()*1.2+.4
+}));
+
+function drawBg() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  for(let i=0;i<PTS.length;i++) {
+    for(let j=i+1;j<PTS.length;j++) {
+      const dx=PTS[i].x-PTS[j].x, dy=PTS[i].y-PTS[j].y;
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d<120) {
+        ctx.beginPath();
+        ctx.strokeStyle=`rgba(0,100,160,${.12*(1-d/120)})`;
+        ctx.lineWidth=.6;
+        ctx.moveTo(PTS[i].x,PTS[i].y);
+        ctx.lineTo(PTS[j].x,PTS[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  PTS.forEach(p=>{
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle='rgba(0,150,200,.4)';
+    ctx.fill();
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0||p.x>canvas.width)p.vx*=-1;
+    if(p.y<0||p.y>canvas.height)p.vy*=-1;
+  });
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+
+/* ── Node SVG ── */
+const svg = document.getElementById('nodesvg');
+const nodes = [
+  {id:'news',x:20,y:36},{id:'ai',x:72,y:16},{id:'pool',x:116,y:40},
+  {id:'exec',x:168,y:18},{id:'chain',x:215,y:38}
+];
+const edges=[['news','ai'],['ai','pool'],['pool','exec'],['exec','chain'],['ai','exec'],['news','pool']];
+
+edges.forEach(([a,b])=>{
+  const na=nodes.find(n=>n.id===a), nb=nodes.find(n=>n.id===b);
+  const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1',na.x);line.setAttribute('y1',na.y);
+  line.setAttribute('x2',nb.x);line.setAttribute('y2',nb.y);
+  line.setAttribute('stroke','rgba(0,180,220,.15)');
+  line.setAttribute('stroke-width','1');
+  svg.appendChild(line);
+  const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  c.setAttribute('r','2.5'); c.setAttribute('fill','#00DCFF'); c.setAttribute('opacity','.7');
+  const am=document.createElementNS('http://www.w3.org/2000/svg','animateMotion');
+  am.setAttribute('dur',`${1.8+Math.random()*2.2}s`);
+  am.setAttribute('repeatCount','indefinite');
+  am.setAttribute('path',`M${na.x},${na.y} L${nb.x},${nb.y}`);
+  c.appendChild(am); svg.appendChild(c);
+});
+
+nodes.forEach(n=>{
+  const labels = {news:'NEWS',ai:'AI',pool:'POOL',exec:'EXEC',chain:'CHAIN'};
+  const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  c.setAttribute('cx',n.x);c.setAttribute('cy',n.y);c.setAttribute('r','7');
+  c.setAttribute('fill','rgba(0,220,255,.08)');c.setAttribute('stroke','rgba(0,220,255,.4)');c.setAttribute('stroke-width','1');
+  const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+  t.setAttribute('x',n.x);t.setAttribute('y',n.y+18);
+  t.setAttribute('text-anchor','middle');t.setAttribute('fill','rgba(0,220,255,.4)');
+  t.setAttribute('font-size','6');t.setAttribute('letter-spacing','1');
+  t.textContent=labels[n.id];
+  svg.appendChild(c); svg.appendChild(t);
+});
+
+/* ── Session counters ── */
+let fillCount = 1247, sessionVol = 847;
+function bumpStats() {
+  fillCount++;
+  sessionVol += Math.round(Math.random() * 4 + 1);
+  const fills = document.getElementById('statFills');
+  const vol   = document.getElementById('statVol');
+  if (fills) fills.textContent = fillCount.toLocaleString();
+  if (vol)   vol.textContent   = '$' + sessionVol + 'M';
+}
+
+/* ── Dark Match ── */
+let matchRunning=false;
+function triggerMatch(){
+  if(matchRunning)return; matchRunning=true;
+  const btn=document.getElementById('matchBtn');
+  const shL=document.getElementById('shL'), shR=document.getElementById('shR');
+  const ripple=document.getElementById('ripple');
+  const ripple2=document.getElementById('ripple2');
+
+  btn.classList.add('pressed');
+  shL.className='shape-box L mergeL';
+  shR.className='shape-box R mergeR';
+
+  setTimeout(()=>{
+    // right shape fades out, left shape becomes the merged result
+    shR.className='shape-box R fadeout';
+    shL.className='shape-box merged';
+
+    // double ripple bloom
+    ripple.classList.remove('go');  void ripple.offsetWidth;
+    ripple2.classList.remove('go'); void ripple2.offsetWidth;
+    ripple.classList.add('go');
+    ripple2.classList.add('go');
+
+    btn.textContent='✓ MATCHED OFF-CHAIN';
+    showToast();
+    runSettle();
+    addLog();
+    bumpStats();
+  },550);
+
+  setTimeout(()=>{
+    shL.className='shape-box L';
+    shR.className='shape-box R';
+    ripple.classList.remove('go');
+    ripple2.classList.remove('go');
+    btn.classList.remove('pressed');
+    btn.textContent='EXECUTE DARK MATCH';
+    matchRunning=false;
+  },2900);
+}
+
+/* ── Toast ── */
+function showToast(){
+  const t=document.getElementById('toast');
+  t.classList.remove('show'); void t.offsetWidth;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+/* ── Settlement ── */
+function runSettle(){
+  const steps=['s1','s2','s3','s4'];
+  steps.forEach(s=>{ document.getElementById(s).className='ss'; });
+  steps.forEach((s,i)=>{
+    setTimeout(()=>{
+      if(i>0) document.getElementById(steps[i-1]).classList.add('done');
+      document.getElementById(s).classList.add('active');
+    },i*500);
+  });
+  setTimeout(()=>{
+    document.getElementById('s4').className='ss done';
+  },steps.length*500);
+}
+
+/* ── Log ── */
+const SYMS=['BTC','ETH','SOL','ARB','AVAX'];
+const SIDES=[['BUY ','buy'],['SELL','sell']];
+function addLog(){
+  const [st,cls]=SIDES[Math.floor(Math.random()*2)];
+  const sym=SYMS[Math.floor(Math.random()*SYMS.length)];
+  const size=(Math.random()*10+.5).toFixed(2);
+  const slip=(Math.random()*.009+.001).toFixed(3);
+  const now=new Date().toISOString().slice(11,19);
+  const log=document.getElementById('log');
+  const d=document.createElement('div');
+  d.className='log-line fresh';
+  d.innerHTML=`<span class="ts">${now}</span><span class="${cls}">${st}</span><span class="sym">${sym}</span><span>${size} · DARK · ${slip}%</span>`;
+  log.insertBefore(d,log.firstChild);
+  if(log.children.length>6)log.lastChild.remove();
+  bumpStats();
+}
+
+/* ── Stealth Mode ── */
+function toggleStealth(){
+  document.body.classList.toggle('stealth');
+}
+
+/* ── Live price jitter (fix: strip ALL commas before parsing) ── */
+setInterval(()=>{
+  document.querySelectorAll('.tick-row .tpx').forEach(el=>{
+    const v = parseFloat(el.textContent.replace(/,/g,''));
+    if (isNaN(v)) return;
+    const nv = v + (Math.random()-.5)*v*.0003;
+    el.textContent = nv > 100
+      ? Math.round(nv).toLocaleString()
+      : nv.toFixed(3);
+  });
+}, 1200);
+
+/* ── Depth bar live fluctuation ── */
+setInterval(()=>{
+  document.querySelectorAll('.db').forEach(bar=>{
+    const cur = parseFloat(bar.style.width) || 50;
+    const next = Math.max(10, Math.min(95, cur + (Math.random()-.5)*6));
+    bar.style.width = next.toFixed(0)+'%';
+  });
+}, 1800);
+</script>
+</body>
+</html>
