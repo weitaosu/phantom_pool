@@ -1,167 +1,140 @@
-# DarkPool.trade
+# Phantom Pool
 
-Privacy-preserving dark pool for prediction markets. Trade large positions without revealing size or direction on-chain.
+### The First Privacy-Preserving Dark Pool for Prediction Markets
 
-## Problem
+<p align="center">
+  <a href="https://frontend-rho-opal-90.vercel.app">Live Demo</a>
+</p>
 
-On transparent prediction markets (Polymarket, Gemini, Kalshi), large trades signal insider activity through immediate price movement. Front-running bots extract value from every visible order.
+---
 
-## Solution
+## The Problem
 
-A commit-reveal dark pool that:
-1. Accepts orders as opaque hashed commitments (nothing visible on-chain)
-2. Matches buyers and sellers off-chain using price-time priority
-3. Settles matched pairs atomically through Alkahest conditional escrows
-4. Executes unmatched residuals as iceberg orders (small timed slices)
+On transparent prediction markets like Polymarket, every large trade is visible on-chain the moment it's submitted. Front-running bots detect whale orders within seconds, copy-traders pile in, and the price moves before the original order fills. A $50,000 position can easily lose **$4,000+** to slippage and information leakage.
 
-An AI news agent monitors headlines, calculates predictive edge via LLM (OpenRouter GPT-4o-mini), and routes trades through the dark pool first.
+Dark pools solve this in traditional finance — **$4.5 trillion per day** flows through equities dark pools, roughly 40% of all US equity volume. Prediction markets have **zero** privacy infrastructure today.
+
+---
+
+## The Solution
+
+Phantom Pool lets traders execute large prediction market positions without revealing order size or direction on-chain.
+
+- **Commit-Reveal Orders** — Traders submit a salted hash on-chain. No size, no direction, no limit price — just an opaque commitment. Details are only revealed after a counterparty is found.
+
+- **Off-Chain Matching** — A price-time priority engine pairs buyers and sellers privately. Matched pairs settle atomically through conditional escrows. Zero MEV exposure.
+
+- **Iceberg Execution** — Unmatched residuals are split into small, randomly-timed slices and drip-fed to the open market. Configurable slice size and timing jitter prevent pattern detection.
+
+- **AI News Agent** — An LLM-powered agent monitors real-time news, calculates predictive edge against current market prices, and routes high-confidence trades through the dark pool first — capturing alpha before the market reacts.
+
+- **Cross-Venue Arbitrage** — Compares prices between Polymarket and Gemini Prediction Markets in real-time, flagging mispricings and routing arbitrage trades privately.
+
+---
 
 ## Architecture
 
-```
-Telegram Bot / Web UI
-       |
-   API Server (Express + WebSocket)
-       |
-   Matching Engine (price-time priority)
-       |
-  +----+----+----+
-  |         |         |
-Polygon   Solana    TRON
-(Alkahest) (DFlow)  (USDT)
-```
+<p align="center">
+  <img src="architecture.png" alt="Phantom Pool Architecture" width="700" />
+</p>
 
-## Deployed Contracts
+---
 
-| Chain | Contract | Address |
-|-------|----------|---------|
-| Polygon (local) | DarkPoolArbiter | `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512` |
-| Polygon (local) | MockUSDC | `0x5FbDB2315678afecb367f032d93F642f64180aa3` |
-| TRON Nile | DarkPoolTron | `TVm22VuHmhxAuxN9f1LfpmrJTWS8aAYG9R` |
-| Solana Devnet | dark_pool (Anchor) | `BxuyonCEw9nnh2qKPUURvx7E8mDJ2CGH1jenxhpjsriC` |
+## Features
 
-## Bounties Targeted (8)
+### Dark Pool Trading
+- Commit-reveal protocol prevents front-running — only a hash is visible on-chain until settlement
+- Price-time priority matching pairs counterparties off-chain with zero information leakage
+- Atomic settlement through Alkahest conditional escrows on Polygon
+- Iceberg orders split large positions into small, jittered slices to mask true order size
 
-| Bounty | Sponsor | Component |
-|--------|---------|-----------|
-| Autonomous News-Driven Trading Agent | Polymarket | News agent + dark pool execution |
-| Best Prediction Market on Solana | Solana | Anchor program + DFlow settlement |
-| Build on Arkhai | Arkhai | Alkahest conditional escrow arbiter |
-| Payments & DeFi Product Demo | TRON | Two-role dark pool (trader + MM) |
-| AI & Agentic Commerce | TRON | x402-style micropayments + multi-sig |
-| Best Use of Gemini Prediction Markets API | Gemini | Cross-venue arb detection |
-| Best Use of Agentic Payments with x402 | Solana | x402 paywall on matching API |
-| Decentralized Infrastructure for Self-Sustaining AI | Filecoin | Agent memory via Synapse SDK |
+### AI Trading Agent
+- Monitors news feeds in real-time via NewsAPI
+- LLM analysis scores each headline for market impact, confidence, and edge
+- Generates actionable trade signals with affected market identification
+- Routes profitable trades through the dark pool before the open market reacts
+- All decisions stored on Filecoin for verifiable, CID-backed reputation
+
+### Cross-Venue Intelligence
+- Real-time price comparison between Polymarket and Gemini Prediction Markets
+- Flags arbitrage opportunities when the same event trades at different prices across venues
+- Routes arbitrage trades through the dark pool to capture spreads privately
+
+### x402 Agentic Payments
+- Any AI agent can access the dark pool by paying a micropayment per order — no API keys, no subscriptions
+- HTTP 402 Payment Required flow with on-chain verification on both Solana and TRON
+- Fully autonomous agent-to-agent commerce
+
+### Multi-Chain Settlement
+- **Polygon** — Alkahest conditional escrow arbiter
+- **Solana** — Anchor program with PDA-based order storage and SPL token escrow
+- **TRON** — USDT settlement with x402-style micropayments on Nile testnet
+
+---
+
+## Dashboard
+
+Five-tab terminal-style interface:
+
+| Tab | Description |
+|-----|-------------|
+| **Home** | Browse live prediction markets from Polymarket and Gemini with real-time price tickers |
+| **Dashboard** | Iceberg engine visualization, settlement animations, execution log, order depth chart |
+| **Trade** | 4-step order wizard — configure, iceberg parameters, commit hash, reveal and settle |
+| **Agent** | AI agent reputation, live news signal feed, cross-venue arbitrage tracker |
+| **TRON** | x402 payment flow — trader submits order, pays micropayment, market maker earns fees |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 15, React 19, TypeScript |
+| Backend | Node.js, Express, TypeScript, ethers.js v6, WebSocket |
+| Smart Contracts | Solidity 0.8.20 (Hardhat), Anchor 0.32 (Solana), TronIDE |
+| AI | OpenRouter GPT-4o-mini — news analysis and intent extraction |
+| Storage | Filecoin via Synapse SDK — agent memory and verifiable reputation |
+| Bot | grammy.js (Telegram) with NLP order flow |
+
+---
 
 ## Quick Start
 
 ```bash
-# 1. Clone and install
 git clone https://github.com/weitaosu/penn_hackathon.git
 cd penn_hackathon
 
-# 2. Backend (.env is pre-configured with all keys)
-cd backend && npm install
-npm run dev   # starts on :3001
+# Backend
+cd backend && npm install && npm run dev    # starts on :3001
 
-# 3. Smart contract tests (separate terminal)
-cd contracts && npm install
-npx hardhat test          # 10 tests passing
+# Frontend (separate terminal)
+cd frontend && npm install && npm run dev   # starts on :3000
 
-# 4. Telegram bot (separate terminal)
-cd bot && npm install
-npm run dev               # bot token already in .env
-
-# 5. Frontend (separate terminal)
-cd frontend && npm install
-npm run dev               # starts on :3000
+# Telegram bot (separate terminal)
+cd bot && npm install && npm run dev
 ```
 
-## Project Structure
+---
 
-```
-contracts/              Smart contracts (Polygon + TRON)
-  src/DarkPoolArbiter.sol Commit-reveal + escrow arbiter (10 tests)
-  tron/DarkPoolTron.sol   TRON dark pool with market maker role
-  test/                   Hardhat tests
-  scripts/                Deploy scripts (Polygon + TRON)
-
-programs/dark_pool/     Solana Anchor program
-  src/lib.rs              Commit/reveal/settle instructions
-  Anchor.toml             Workspace config (program ID: Bxuyon...)
-
-backend/                API server + matching engine
-  src/matching/           OrderBook + Matcher (price-time priority)
-  src/chain/              Alkahest + Solana event listeners, Settler
-  src/iceberg/            Iceberg queue with Polymarket CLOB integration
-  src/llm/                Shared LLM client (OpenRouter + OpenAI fallback)
-  src/middleware/          x402 payment middleware (Solana + TRON)
-  src/agent/              News-driven trading agent
-  src/feeds/              Gemini Prediction Markets API client
-  src/filecoin/           Agent storage via Synapse SDK
-  src/routes/             REST API endpoints
-  test/                   17 unit tests (Vitest)
-
-bot/                    Telegram bot
-  src/handlers/rfq.ts     Natural language order flow
-  src/ai/                 OpenRouter LLM intent extraction
-
-frontend/               Next.js dashboard
-  app/page.tsx            Market browser + arb detection + agent activity
-  app/trade/page.tsx      Order submission wizard
-  app/dashboard/page.tsx  Orders table + Filecoin reputation
-
-backtest/               Polymarket bounty deliverable
-  newsAgentBacktest.ts    Simulated trading log (+23.5% return)
-```
-
-## API Endpoints
+## API
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/orders/submit` | Submit dark pool order |
-| POST | `/api/orders/reveal` | Reveal committed order |
-| GET | `/api/orders/:id` | Order status |
+| POST | `/api/orders/submit` | Submit a dark pool order |
+| POST | `/api/orders/reveal` | Reveal a committed order |
+| GET | `/api/orders/:id` | Order status and match info |
 | GET | `/api/markets` | Browse Polymarket markets |
-| GET | `/api/gemini/events` | Gemini prediction markets |
-| GET | `/api/gemini/cross-venue` | Cross-venue arb opportunities |
+| GET | `/api/gemini/events` | Gemini prediction market events |
+| GET | `/api/gemini/cross-venue` | Cross-venue arbitrage opportunities |
 | GET | `/api/news/signals` | AI agent trade signals |
-| GET | `/api/agent/reputation` | Filecoin-backed reputation |
-| GET | `/api/agent/memory` | Agent decision log |
-| POST | `/api/solana/orders/submit` | x402-gated (Solana) |
-| POST | `/api/tron/orders/submit` | x402-gated (TRON) |
-| GET | `/health` | Health check + LLM provider info |
+| GET | `/api/agent/reputation` | Filecoin-backed agent reputation |
+| POST | `/api/solana/orders/submit` | x402-gated order submission (Solana) |
+| POST | `/api/tron/orders/submit` | x402-gated order submission (TRON) |
 | WS | `/ws` | Real-time order events |
 
-## Tech Stack
+---
 
-- **Smart Contracts:** Solidity 0.8.20 (Hardhat), Anchor 0.32 (Solana), TronIDE (TRON)
-- **Backend:** Node.js, Express, TypeScript, ethers.js v6, @solana/web3.js
-- **AI:** OpenRouter (GPT-4o-mini) — news analysis + intent extraction
-- **Bot:** grammy.js (Telegram) with NLP order flow
-- **Frontend:** Next.js 15, React 19
-- **Testing:** Vitest (17 tests), Hardhat/Chai (10 tests)
-- **Infra:** Redis, Railway, Vercel
-
-## Test Results
-
-```
-Backend:   17/17 passing (Vitest)
-Contracts: 10/10 passing (Hardhat)
-TypeScript: 0 compilation errors
-Backtest:  5 trades, +23.5% return, 100% win rate
-```
-
-## Configured Services
-
-All keys are in `.env` — no setup needed:
-- OpenRouter (GPT-4o-mini) — AI features
-- Polymarket CLOB — real order execution
-- Telegram Bot — live at @DarkPoolTradeBot
-- NewsAPI — real-time news headlines
-- Alchemy — Polygon RPC
-- Wallets — Polygon, TRON, Solana, Filecoin
-
-## Team
-
-Built at University of Pennsylvania Blockchain Hackathon '26.
+<p align="center">
+  Built at University of Pennsylvania Blockchain Hackathon '26
+</p>
