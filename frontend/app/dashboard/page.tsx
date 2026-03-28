@@ -162,7 +162,7 @@ export default function DashboardPage() {
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <div className="panel-label">
         <span>Iceberg Engine · BTC/USD</span>
-        <span style={{ color: "#FF8C00" }}>87,442</span>
+        <span style={{ color: "#FF8C00" }}>66,425</span>
       </div>
       <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10, flex: 1, overflow: "hidden" }}>
         <IcebergScene />

@@ -5,10 +5,10 @@ import { getOrderBook } from "@/lib/api";
 interface DepthLevel { price: string; size: string; width: number; side: "bid" | "ask"; }
 
 const INIT: DepthLevel[] = [
-  { price:"87,500", size:"412K", width:85, side:"bid" },
-  { price:"87,480", size:"218K", width:56, side:"bid" },
-  { price:"87,400", size:"290K", width:70, side:"ask" },
-  { price:"87,360", size:"95K",  width:38, side:"ask" },
+  { price:"66,480", size:"412K", width:85, side:"bid" },
+  { price:"66,450", size:"218K", width:56, side:"bid" },
+  { price:"66,400", size:"290K", width:70, side:"ask" },
+  { price:"66,350", size:"95K",  width:38, side:"ask" },
 ];
 
 export default function OrderDepth() {
@@ -62,7 +62,7 @@ export default function OrderDepth() {
       )}
       {bids.map((l, i) => <DepthRow key={`b${i}`} l={l} />)}
       <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 9, opacity: 0.5, margin: "1px 0" }}>
-        <span style={{ color: "#334", minWidth: 52, textAlign: "right" }}>87,442</span>
+        <span style={{ color: "#334", minWidth: 52, textAlign: "right" }}>66,425</span>
         <div style={{ flex: 1, height: 1, background: "#1a2a1a" }} />
         <span style={{ color: "#FF8C00", minWidth: 42, fontSize: 8 }}>LAST</span>
       </div>

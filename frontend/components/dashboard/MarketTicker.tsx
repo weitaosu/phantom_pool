@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 interface Ticker { sym: string; price: number; change: number; alert?: boolean; }
 
 const INIT: Ticker[] = [
-  { sym:"BTC",  price:87442, change:1.24 },
-  { sym:"ETH",  price:3218,  change:-2.87, alert:true },
-  { sym:"SOL",  price:142.08,change:0.61 },
-  { sym:"ARB",  price:1.234, change:-0.42 },
-  { sym:"AVAX", price:38.41, change:2.10 },
+  { sym:"BTC",  price:66425, change:-3.52 },
+  { sym:"ETH",  price:2004.69, change:-3.06 },
+  { sym:"SOL",  price:83.34, change:-3.15 },
+  { sym:"ARB",  price:0.0895, change:-5.08 },
+  { sym:"AVAX", price:8.80,  change:-3.07 },
 ];
 
 function fmt(n: number): string {
