@@ -1,73 +1,167 @@
-# SDK Reference Docs — DarkPool.trade Hackathon
+# DarkPool.trade
 
-These docs are designed for Claude Code to understand the actual API surfaces of each SDK used in the project. Each file contains real code examples from official documentation, correct package names, gotchas, and differences from what the plan assumes.
+Privacy-preserving dark pool for prediction markets. Trade large positions without revealing size or direction on-chain.
 
-## Files
+## Problem
 
-| File | SDK | Bounty | Risk Level | Priority |
-|------|-----|--------|------------|----------|
-| `ALKAHEST.md` | Alkahest (Arkhai escrow) | Arkhai ($1k) | Medium | P1 — spike test hours 0-4 |
-| `X402.md` | x402 (Coinbase payments) | Solana x402 + TRON AI ($2k) | Medium | P3 — middleware layer |
-| `SWIG.md` | Swig (Solana smart accounts) | Solana Smart Accts ($1k) | High | P4 — cut if behind |
-| `FILECOIN_SYNAPSE.md` | Synapse (Filecoin storage) | Filecoin ($1k) | Medium | P3 — additive |
-| `GEMINI_PREDICTIONS.md` | Gemini Prediction Markets API | Gemini ($1k) | Low | P1 — read-only, fast |
-| `POLYMARKET_CLOB.md` | Polymarket CLOB + Gamma | Polymarket ($1k) | Low | P0 — core dependency |
-| `TRONWEB.md` | TronWeb (TRON chain) | TRON DeFi + AI ($2k) | Low | P2 — established SDK |
+On transparent prediction markets (Polymarket, Gemini, Kalshi), large trades signal insider activity through immediate price movement. Front-running bots extract value from every visible order.
 
-## Critical Corrections vs Plan
+## Solution
 
-The hackathon plan (plan.md) uses some WRONG package names. Here are the corrections:
+A commit-reveal dark pool that:
+1. Accepts orders as opaque hashed commitments (nothing visible on-chain)
+2. Matches buyers and sellers off-chain using price-time priority
+3. Settles matched pairs atomically through Alkahest conditional escrows
+4. Executes unmatched residuals as iceberg orders (small timed slices)
 
-| Plan Says | Actual Package | Notes |
-|-----------|---------------|-------|
-| `@alkahest/sdk` | `alkahest-ts` or GitHub install | Verify on npm before installing |
-| `@alkahest/contracts` | Part of alkahest-ts repo | Not a separate package |
-| `@swig/sdk` | `@swig-wallet/classic` | For @solana/web3.js |
-| `@swig/wallet-adapter` | `@swig-wallet/kit` | For @solana/kit |
-| `@x402/express` (with old API) | `@x402/express` or `x402-express` | Two different APIs — see X402.md |
-| `@filoz/synapse-sdk` `.store()` | `@filoz/synapse-sdk` `.upload()` | Plan's API is fictional — use real SDK |
+An AI news agent monitors headlines, calculates predictive edge via LLM (OpenRouter GPT-4o-mini), and routes trades through the dark pool first.
 
-## Spike Test Checklist (Hours 0-4)
+## Architecture
 
-Run these BEFORE committing to each integration:
+```
+Telegram Bot / Web UI
+       |
+   API Server (Express + WebSocket)
+       |
+   Matching Engine (price-time priority)
+       |
+  +----+----+----+
+  |         |         |
+Polygon   Solana    TRON
+(Alkahest) (DFlow)  (USDT)
+```
+
+## Deployed Contracts
+
+| Chain | Contract | Address |
+|-------|----------|---------|
+| Polygon (local) | DarkPoolArbiter | `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512` |
+| Polygon (local) | MockUSDC | `0x5FbDB2315678afecb367f032d93F642f64180aa3` |
+| TRON Nile | DarkPoolTron | `TVm22VuHmhxAuxN9f1LfpmrJTWS8aAYG9R` |
+| Solana Devnet | dark_pool (Anchor) | `BxuyonCEw9nnh2qKPUURvx7E8mDJ2CGH1jenxhpjsriC` |
+
+## Bounties Targeted (8)
+
+| Bounty | Sponsor | Component |
+|--------|---------|-----------|
+| Autonomous News-Driven Trading Agent | Polymarket | News agent + dark pool execution |
+| Best Prediction Market on Solana | Solana | Anchor program + DFlow settlement |
+| Build on Arkhai | Arkhai | Alkahest conditional escrow arbiter |
+| Payments & DeFi Product Demo | TRON | Two-role dark pool (trader + MM) |
+| AI & Agentic Commerce | TRON | x402-style micropayments + multi-sig |
+| Best Use of Gemini Prediction Markets API | Gemini | Cross-venue arb detection |
+| Best Use of Agentic Payments with x402 | Solana | x402 paywall on matching API |
+| Decentralized Infrastructure for Self-Sustaining AI | Filecoin | Agent memory via Synapse SDK |
+
+## Quick Start
 
 ```bash
-# 1. Alkahest — can we deploy locally?
-npx alkahest deploy-local  # Does this command exist?
-# Fallback: clone alkahest contracts, deploy via Hardhat
+# 1. Clone and install
+git clone https://github.com/weitaosu/penn_hackathon.git
+cd penn_hackathon
 
-# 2. Synapse — can we connect to calibnet?
-node -e "
-const { Synapse, RPC_URLS } = require('@filoz/synapse-sdk');
-Synapse.create({ privateKey: '0x...', rpcURL: RPC_URLS.calibration.websocket })
-  .then(s => console.log('Connected!'))
-  .catch(e => console.error('FAILED:', e));
-"
+# 2. Backend (.env is pre-configured with all keys)
+cd backend && npm install
+npm run dev   # starts on :3001
 
-# 3. Swig — does the validator work?
-cd swig-ts && bun start-validator
-# Then: can we create a Swig account?
+# 3. Smart contract tests (separate terminal)
+cd contracts && npm install
+npx hardhat test          # 10 tests passing
 
-# 4. Gemini — does the events endpoint return data?
-curl https://api.gemini.com/v1/prediction-markets/events?status=active | head
+# 4. Telegram bot (separate terminal)
+cd bot && npm install
+npm run dev               # bot token already in .env
 
-# 5. x402 — does the facilitator respond?
-curl https://x402.org/facilitator
-
-# 6. Polymarket — can we fetch markets?
-curl 'https://gamma-api.polymarket.com/markets?closed=false&limit=5' | head
+# 5. Frontend (separate terminal)
+cd frontend && npm install
+npm run dev               # starts on :3000
 ```
 
-## Usage with Claude Code
-
-Point Claude Code at these files when implementing each bounty:
+## Project Structure
 
 ```
-/read docs/sdks/ALKAHEST.md     # Before implementing DarkPoolArbiter
-/read docs/sdks/X402.md         # Before implementing x402 middleware
-/read docs/sdks/SWIG.md         # Before implementing smart account provisioning
-/read docs/sdks/FILECOIN_SYNAPSE.md  # Before implementing agent storage
-/read docs/sdks/GEMINI_PREDICTIONS.md # Before implementing cross-venue feed
-/read docs/sdks/POLYMARKET_CLOB.md   # Before implementing CLOB integration
-/read docs/sdks/TRONWEB.md      # Before implementing TRON contracts
+contracts/              Smart contracts (Polygon + TRON)
+  src/DarkPoolArbiter.sol Commit-reveal + escrow arbiter (10 tests)
+  tron/DarkPoolTron.sol   TRON dark pool with market maker role
+  test/                   Hardhat tests
+  scripts/                Deploy scripts (Polygon + TRON)
+
+programs/dark_pool/     Solana Anchor program
+  src/lib.rs              Commit/reveal/settle instructions
+  Anchor.toml             Workspace config (program ID: Bxuyon...)
+
+backend/                API server + matching engine
+  src/matching/           OrderBook + Matcher (price-time priority)
+  src/chain/              Alkahest + Solana event listeners, Settler
+  src/iceberg/            Iceberg queue with Polymarket CLOB integration
+  src/llm/                Shared LLM client (OpenRouter + OpenAI fallback)
+  src/middleware/          x402 payment middleware (Solana + TRON)
+  src/agent/              News-driven trading agent
+  src/feeds/              Gemini Prediction Markets API client
+  src/filecoin/           Agent storage via Synapse SDK
+  src/routes/             REST API endpoints
+  test/                   17 unit tests (Vitest)
+
+bot/                    Telegram bot
+  src/handlers/rfq.ts     Natural language order flow
+  src/ai/                 OpenRouter LLM intent extraction
+
+frontend/               Next.js dashboard
+  app/page.tsx            Market browser + arb detection + agent activity
+  app/trade/page.tsx      Order submission wizard
+  app/dashboard/page.tsx  Orders table + Filecoin reputation
+
+backtest/               Polymarket bounty deliverable
+  newsAgentBacktest.ts    Simulated trading log (+23.5% return)
 ```
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/orders/submit` | Submit dark pool order |
+| POST | `/api/orders/reveal` | Reveal committed order |
+| GET | `/api/orders/:id` | Order status |
+| GET | `/api/markets` | Browse Polymarket markets |
+| GET | `/api/gemini/events` | Gemini prediction markets |
+| GET | `/api/gemini/cross-venue` | Cross-venue arb opportunities |
+| GET | `/api/news/signals` | AI agent trade signals |
+| GET | `/api/agent/reputation` | Filecoin-backed reputation |
+| GET | `/api/agent/memory` | Agent decision log |
+| POST | `/api/solana/orders/submit` | x402-gated (Solana) |
+| POST | `/api/tron/orders/submit` | x402-gated (TRON) |
+| GET | `/health` | Health check + LLM provider info |
+| WS | `/ws` | Real-time order events |
+
+## Tech Stack
+
+- **Smart Contracts:** Solidity 0.8.20 (Hardhat), Anchor 0.32 (Solana), TronIDE (TRON)
+- **Backend:** Node.js, Express, TypeScript, ethers.js v6, @solana/web3.js
+- **AI:** OpenRouter (GPT-4o-mini) — news analysis + intent extraction
+- **Bot:** grammy.js (Telegram) with NLP order flow
+- **Frontend:** Next.js 15, React 19
+- **Testing:** Vitest (17 tests), Hardhat/Chai (10 tests)
+- **Infra:** Redis, Railway, Vercel
+
+## Test Results
+
+```
+Backend:   17/17 passing (Vitest)
+Contracts: 10/10 passing (Hardhat)
+TypeScript: 0 compilation errors
+Backtest:  5 trades, +23.5% return, 100% win rate
+```
+
+## Configured Services
+
+All keys are in `.env` — no setup needed:
+- OpenRouter (GPT-4o-mini) — AI features
+- Polymarket CLOB — real order execution
+- Telegram Bot — live at @DarkPoolTradeBot
+- NewsAPI — real-time news headlines
+- Alchemy — Polygon RPC
+- Wallets — Polygon, TRON, Solana, Filecoin
+
+## Team
+
+Built at University of Pennsylvania Blockchain Hackathon '26.

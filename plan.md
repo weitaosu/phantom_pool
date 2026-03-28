@@ -11,11 +11,11 @@
 
 **DarkPool.trade** is a privacy-preserving prediction market trading platform that lets large traders execute positions without revealing their size or direction on-chain. On transparent prediction markets like Polymarket, a whale buying $50,000 of "Yes" instantly signals insider activity — price spikes before the order fills, and front-running bots extract value from every large trade. DarkPool.trade solves this with a commit-reveal matching layer built on Alkahest conditional escrows: traders lock funds in opaque on-chain commitments, an off-chain matching engine pairs compatible counterparties, and settlement executes atomically only when a match is confirmed.
 
-At its core, the system is an **autonomous AI trading agent** that monitors real-time news feeds, calculates predictive edge using GPT-4o sentiment analysis, and routes high-confidence trades through the dark pool first — capturing better prices from private counterparties before any signal reaches the public order book. Unmatched residuals are executed as iceberg orders (small timed slices) to minimize market impact. The agent's wallet is secured by a Swig smart account with human-controlled spend limits, program whitelists, and an emergency stop — all managed through a Telegram interface.
+At its core, the system is an **autonomous AI trading agent** that monitors real-time news feeds, calculates predictive edge using LLM sentiment analysis (via OpenRouter), and routes high-confidence trades through the dark pool first — capturing better prices from private counterparties before any signal reaches the public order book. Unmatched residuals are executed as iceberg orders (small timed slices) to minimize market impact. The agent's wallet is secured by a Swig smart account with human-controlled spend limits, program whitelists, and an emergency stop — all managed through a Telegram interface.
 
 The platform is multi-chain by design: primary settlement flows through Polymarket's CTF Exchange on Polygon (via Alkahest arbitration), the Solana branch settles against DFlow's tokenized Kalshi SPL markets with x402 micropayment access, and a TRON branch serves as a two-role DeFi dark pool (trader + market maker) using USDT. A Gemini Prediction Markets API integration powers cross-venue arbitrage detection — surfacing pricing discrepancies between Gemini and Polymarket for the same events. All agent decisions and order logs are stored permanently on Filecoin via the Synapse SDK, creating a verifiable, CID-backed reputation trail.
 
-**Key stats:** 9 bounties targeted · $9,000 prize pool · 4 chains (Polygon, Solana, TRON, Filecoin/Calibnet) · 3 AI integrations (OpenAI GPT-4o, NewsAPI, Gemini API) · 1 unified codebase
+**Key stats:** 9 bounties targeted · $9,000 prize pool · 4 chains (Polygon, Solana, TRON, Filecoin/Calibnet) · 3 AI integrations (OpenRouter LLM, NewsAPI, Gemini API) · 1 unified codebase
 
 ---
 
@@ -72,7 +72,7 @@ The key insight: all bounties describe different facets of the **same system**. 
 │                              USER INTERFACES                                │
 │  ┌─────────────────────┐    ┌─────────────────────────────────────────┐    │
 │  │   Telegram Bot      │    │   Web Dashboard (Next.js)               │    │
-│  │   (OpenAI GPT-4o)   │    │   Polymarket + Gemini prices            │    │
+│  │   (OpenRouter (GPT-4o-mini))   │    │   Polymarket + Gemini prices            │    │
 │  │   Human control     │    │   Order book depth, agent activity      │    │
 │  │   for agent policy  │    │                                         │    │
 │  └──────────┬──────────┘    └──────────────────┬────────────────────-┘    │
@@ -240,7 +240,7 @@ News Sources:
   - Perplexity API (live web search)
                     ↓
          Event Relevance Classifier
-         (OpenAI GPT-4o, structured output)
+         (OpenRouter (GPT-4o-mini), structured output)
          → Which Polymarket markets are affected?
          → Probability shift estimate
          → Confidence score (0-100)
@@ -415,7 +415,7 @@ class GeminiPriceFeed {
     return { bid, ask, mid: (bid + ask) / 2 };
   }
 
-  // Match Gemini events to Polymarket markets using GPT-4o semantic matching
+  // Match Gemini events to Polymarket markets using LLM semantic matching (via OpenRouter)
   async findCrossVenueMatches(polymarketMarkets) {
     const geminiEvents = await this.getEvents();
 
@@ -1165,7 +1165,7 @@ alkahest.on('EscrowCreated', async (escrowId, obligation, demand, arbiter) => {
 | Component | Choice | Serves Bounty |
 |-----------|--------|---------------|
 | Escrow layer | Alkahest SDK + DarkPoolArbiter.sol | Arkhai |
-| News feeds | NewsAPI + RSS + OpenAI GPT-4o | Polymarket |
+| News feeds | NewsAPI + RSS + OpenRouter (GPT-4o-mini) | Polymarket |
 | Cross-venue prices | Gemini Prediction Markets API | Gemini |
 | Solana settlement | DFlow API (Kalshi SPL tokens) | Solana (markets) |
 | Solana smart accounts | Swig SDK (@swig/sdk) | Solana (smart accts) |
@@ -1243,14 +1243,14 @@ P4 (nice to have):
 
 #### Hour 2–8: News Agent (Backend Dev 2) — P1
 - [ ] NewsAPI client + RSS parser
-- [ ] GPT-4o article analyzer with market matching
+- [ ] LLM article analyzer (OpenRouter) with market matching
 - [ ] Edge calculator (Kelly criterion sizing)
 - [ ] Wire to dark pool order submission
 - [ ] Generate backtest log (script against historical data)
 
 #### Hour 8–14: Gemini + Cross-Venue (Backend Dev 2) — P1
 - [ ] Gemini Prediction Markets API client
-- [ ] Cross-venue event matching (GPT-4o semantic)
+- [ ] Cross-venue event matching (LLM semantic)
 - [ ] Arb detection logic
 - [ ] WebSocket subscription for live Gemini prices
 - [ ] Dashboard widget (Cross-Venue Intel panel)
@@ -1328,7 +1328,7 @@ P4 (nice to have):
 |--------|---------|-----------|-------------|
 | **Contract Dev** | DarkPoolArbiter.sol + Alkahest, TRON contract | Solana Anchor program | 0-18h smart contracts |
 | **Matching Engine Dev** | Matching engine, ChainListener, Alkahest listener | x402 middleware | 0-18h backend core |
-| **AI/Agent Dev** | News agent (GPT-4o), Filecoin storage, Gemini feed | Backtest logs | 2-18h agent systems |
+| **AI/Agent Dev** | News agent (OpenRouter LLM), Filecoin storage, Gemini feed | Backtest logs | 2-18h agent systems |
 | **Bot/Frontend Dev** | Telegram bot + Swig commands, Next.js dashboard | x402 TRON, cross-venue UI | 2-24h bot + frontend |
 | **Trading/PM** | Demo prep, pitch, backtest data, submission | TRON UX, market maker demo | 24-48h demo + pitch |
 

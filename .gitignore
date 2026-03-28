@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.next/
+.env
+*.log
+contracts/cache/
+contracts/artifacts/
+.claude-octopus/
+addresses.txt
