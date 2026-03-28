@@ -10,7 +10,7 @@ export function createMarketRoutes(): Router {
   router.get('/', async (_req: Request, res: Response) => {
     try {
       const response = await fetch(
-        `${POLYMARKET_GAMMA_URL}/markets?closed=false&limit=20&order=volume24hr&ascending=false`,
+        `${POLYMARKET_GAMMA_URL}/markets?closed=false&limit=100&order=volume24hr&ascending=false`,
       );
 
       if (!response.ok) {

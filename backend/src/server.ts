@@ -132,7 +132,7 @@ app.get('/api/gemini/events', async (_req, res) => {
 
 app.get('/api/gemini/cross-venue', async (_req, res) => {
   try {
-    const marketsRes = await fetch('https://gamma-api.polymarket.com/markets?closed=false&limit=20');
+    const marketsRes = await fetch('https://gamma-api.polymarket.com/markets?closed=false&limit=100');
     const markets = marketsRes.ok ? await marketsRes.json() as any[] : [];
     const polyMarkets = markets.map((m: any) => ({
       conditionId: m.conditionId, title: m.question,

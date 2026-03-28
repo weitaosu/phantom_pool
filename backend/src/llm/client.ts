@@ -1,18 +1,18 @@
 /**
- * Shared LLM client — routes through OpenRouter (OpenAI-compatible API).
- * Falls back to direct OpenAI if OPENAI_API_KEY is set instead.
+ * Shared LLM client — priority order:
+ *   1. NVIDIA Nemotron (NVIDIA_API_KEY) — free tier at build.nvidia.com
+ *   2. OpenRouter (OPENROUTER_API_KEY)
+ *   3. Direct OpenAI (OPENAI_API_KEY)
  *
- * With paid OpenRouter key: uses openai/gpt-4o-mini (~$0.10/M tokens)
- * which supports native JSON mode for reliable structured output.
- *
- * Config via env:
- *   OPENROUTER_API_KEY  — OpenRouter key (preferred)
- *   OPENROUTER_MODEL    — model to use (default: openai/gpt-4o-mini)
- *   OPENAI_API_KEY      — fallback: direct OpenAI
+ * NVIDIA API is OpenAI-compatible at https://integrate.api.nvidia.com/v1
+ * Model: nvidia/llama-3.1-nemotron-70b-instruct (free, 1000 req/month)
  */
 
+const NVIDIA_URL  = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
+const OPENAI_URL  = 'https://api.openai.com/v1/chat/completions';
+
+const NVIDIA_MODEL = 'nvidia/llama-3.1-nemotron-nano-8b-v1';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -26,12 +26,16 @@ interface LLMResponse {
 }
 
 function getConfig() {
+  const nvidiaKey    = process.env.NVIDIA_API_KEY;
   const openrouterKey = process.env.OPENROUTER_API_KEY;
-  const openaiKey = process.env.OPENAI_API_KEY;
-  const model = process.env.OPENROUTER_MODEL ?? 'openai/gpt-4o-mini';
+  const openaiKey    = process.env.OPENAI_API_KEY;
+  const orModel      = process.env.OPENROUTER_MODEL ?? 'openai/gpt-4o-mini';
 
+  if (nvidiaKey) {
+    return { url: NVIDIA_URL, key: nvidiaKey, model: NVIDIA_MODEL, provider: 'nvidia' as const };
+  }
   if (openrouterKey) {
-    return { url: OPENROUTER_URL, key: openrouterKey, model, provider: 'openrouter' as const };
+    return { url: OPENROUTER_URL, key: openrouterKey, model: orModel, provider: 'openrouter' as const };
   }
   if (openaiKey) {
     return { url: OPENAI_URL, key: openaiKey, model: 'gpt-4o', provider: 'openai' as const };
@@ -57,7 +61,7 @@ export async function chatCompletion(
     temperature: options.temperature ?? 0.3,
   };
 
-  // GPT-4o-mini and most paid models support native JSON mode
+  // Nemotron supports JSON mode via response_format
   if (options.jsonMode) {
     body.response_format = { type: 'json_object' };
   }
@@ -77,6 +81,7 @@ export async function chatCompletion(
       method: 'POST',
       headers,
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60_000),
     });
 
     if (!response.ok) {
@@ -111,7 +116,7 @@ export async function chatCompletionJSON<T>(
 
   let content = result.content.trim();
 
-  // Safety: strip markdown fences if model wraps JSON (shouldn't happen with json_mode but just in case)
+  // Strip markdown fences if model wraps JSON
   if (content.startsWith('```')) {
     content = content.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
   }

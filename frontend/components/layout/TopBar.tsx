@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import { getHealth, type HealthResponse } from "@/lib/api";
 
 interface TopBarProps {
   onMatch?: () => void;
@@ -11,6 +12,8 @@ interface TopBarProps {
 export default function TopBar({ onMatch, onInject }: TopBarProps) {
   const [clock, setClock] = useState("--:--:-- UTC");
   const [stealth, setStealth] = useState(false);
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [connected, setConnected] = useState<boolean | null>(null); // null = unknown
   const router = useRouter();
   const pathname = usePathname();
 
@@ -21,7 +24,25 @@ export default function TopBar({ onMatch, onInject }: TopBarProps) {
     return () => clearInterval(id);
   }, []);
 
-  // Stealth overlay managed here so it works on every page
+  const checkHealth = useCallback(async () => {
+    const h = await getHealth();
+    if (h) {
+      setHealth(h);
+      setConnected(true);
+    } else {
+      setConnected(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkHealth();
+    const id = setInterval(checkHealth, 10_000);
+    return () => clearInterval(id);
+  }, [checkHealth]);
+
+  const dotColor = connected === null ? "#FF8C00" : connected ? "#39FF14" : "#FF3A3A";
+  const dotLabel = connected === null ? "CONNECTING" : connected ? "LIVE" : "OFFLINE";
+
   return (
     <>
       {/* Global stealth overlay */}
@@ -39,16 +60,41 @@ export default function TopBar({ onMatch, onInject }: TopBarProps) {
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
           {/* Live dot */}
           <div style={{
-            width: 6, height: 6, borderRadius: "50%", background: "#39FF14",
-            boxShadow: "0 0 8px #39FF14",
-            animation: "blink 1.2s step-end infinite",
+            width: 6, height: 6, borderRadius: "50%", background: dotColor,
+            boxShadow: `0 0 8px ${dotColor}`,
+            animation: connected ? "blink 1.2s step-end infinite" : "none",
+            transition: "background 0.5s, box-shadow 0.5s",
           }} />
-          {/* Logo */}
+
+          {/* Logo + backend stats */}
           <Link href="/dashboard" style={{ textDecoration: "none" }}>
-            <div className="shimmer-text" style={{ fontSize: 11, fontWeight: 600, letterSpacing: 5, textTransform: "uppercase" }}>
-              PHANTOM POOL · v2.0
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div className="shimmer-text" style={{ fontSize: 11, fontWeight: 600, letterSpacing: 5, textTransform: "uppercase" }}>
+                PHANTOM POOL
+              </div>
+              {connected && health && (
+                <div style={{ display: "flex", gap: 4 }}>
+                  <span style={{
+                    fontSize: 7, letterSpacing: 1, padding: "1px 5px", borderRadius: 2,
+                    background: "rgba(0,220,255,0.08)", border: "1px solid rgba(0,220,255,0.2)",
+                    color: "rgba(0,220,255,0.6)",
+                  }}>
+                    {health.orderBookSize} ORDERS
+                  </span>
+                  {health.icebergQueueSize > 0 && (
+                    <span style={{
+                      fontSize: 7, letterSpacing: 1, padding: "1px 5px", borderRadius: 2,
+                      background: "rgba(255,140,0,0.08)", border: "1px solid rgba(255,140,0,0.2)",
+                      color: "rgba(255,140,0,0.7)",
+                    }}>
+                      {health.icebergQueueSize} ICE
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </Link>
+
           {/* Nav links */}
           <nav style={{ display: "flex", gap: 16 }}>
             {[
@@ -56,45 +102,36 @@ export default function TopBar({ onMatch, onInject }: TopBarProps) {
               { href: "/dashboard", label: "TERMINAL" },
               { href: "/trade",     label: "TRADE"    },
               { href: "/tron",      label: "TRON"     },
+              { href: "/agent",     label: "AGENT"    },
             ].map(({ href, label }) => {
-              const active = pathname === href;
+              const active = pathname === href || (href !== "/" && pathname?.startsWith(href));
+              const isAgent = href === "/agent";
               return (
                 <Link key={href} href={href} style={{
                   fontSize: 8, letterSpacing: 2, textTransform: "uppercase",
-                  color: active ? "#00DCFF" : "rgba(0,220,255,0.4)",
+                  color: active
+                    ? (isAgent ? "#39FF14" : "#00DCFF")
+                    : (isAgent ? "rgba(57,255,20,0.35)" : "rgba(0,220,255,0.4)"),
                   textDecoration: "none", transition: "color 0.2s",
-                  textShadow: active ? "0 0 8px rgba(0,220,255,0.5)" : "none",
+                  textShadow: active ? (isAgent ? "0 0 8px rgba(57,255,20,0.5)" : "0 0 8px rgba(0,220,255,0.5)") : "none",
                 }}>{label}</Link>
               );
             })}
           </nav>
-          {/* Clock */}
-          <div style={{ fontSize: 9, letterSpacing: 2, color: "rgba(0,220,255,0.35)" }}>{clock}</div>
+
+          {/* Clock + backend status */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ fontSize: 9, letterSpacing: 2, color: "rgba(0,220,255,0.35)" }}>{clock}</div>
+            <div style={{ fontSize: 7, letterSpacing: 2, color: dotColor === "#39FF14" ? "rgba(57,255,20,0.5)" : dotColor === "#FF3A3A" ? "rgba(255,58,58,0.5)" : "rgba(255,140,0,0.5)" }}>
+              {dotLabel}
+            </div>
+          </div>
         </div>
 
         <div style={{ display: "flex", gap: 10 }}>
-          {/* INJECT ORDER */}
-          <TopBtn
-            label="+ INJECT ORDER"
-            color="#FF8C00"
-            borderColor="rgba(255,140,0,0.3)"
-            onClick={onInject ?? (() => router.push("/trade"))}
-          />
-          {/* DARK MATCH */}
-          <TopBtn
-            label="DARK MATCH"
-            color="#00DCFF"
-            borderColor="rgba(0,220,255,0.3)"
-            onClick={onMatch ?? (() => router.push("/dashboard"))}
-          />
-          {/* STEALTH */}
-          <TopBtn
-            label={stealth ? "● VISIBLE" : "⬛ STEALTH"}
-            color="#7b5ea7"
-            borderColor="rgba(123,94,167,0.4)"
-            active={stealth}
-            onClick={() => setStealth(s => !s)}
-          />
+          <TopBtn label="+ INJECT ORDER" color="#FF8C00" borderColor="rgba(255,140,0,0.3)" onClick={onInject ?? (() => router.push("/trade"))} />
+          <TopBtn label="DARK MATCH" color="#00DCFF" borderColor="rgba(0,220,255,0.3)" onClick={onMatch ?? (() => router.push("/dashboard"))} />
+          <TopBtn label={stealth ? "● VISIBLE" : "⬛ STEALTH"} color="#7b5ea7" borderColor="rgba(123,94,167,0.4)" active={stealth} onClick={() => setStealth(s => !s)} />
         </div>
       </header>
     </>

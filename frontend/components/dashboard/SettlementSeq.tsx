@@ -9,9 +9,9 @@ const STEPS = [
   { id: "s4", label: "✓ Settled" },
 ];
 
-interface SettlementSeqProps { trigger?: number; }
+interface SettlementSeqProps { trigger?: number; onComplete?: () => void; }
 
-export default function SettlementSeq({ trigger = 0 }: SettlementSeqProps) {
+export default function SettlementSeq({ trigger = 0, onComplete }: SettlementSeqProps) {
   const [states, setStates] = useState<StepState[]>(["idle","idle","idle","idle"]);
   const prev = useRef(0);
 
@@ -24,7 +24,7 @@ export default function SettlementSeq({ trigger = 0 }: SettlementSeqProps) {
         setStates(s => s.map((v, j) => j < i ? "done" : j === i ? "active" : v));
       }, i * 500);
     });
-    setTimeout(() => setStates(["done","done","done","done"]), STEPS.length * 500);
+    setTimeout(() => { setStates(["done","done","done","done"]); onComplete?.(); }, STEPS.length * 500);
   }, [trigger]);
 
   return (
@@ -40,7 +40,7 @@ export default function SettlementSeq({ trigger = 0 }: SettlementSeqProps) {
             transition: "all 0.5s",
           }}>{step.label}</div>
           {i < STEPS.length - 1 && (
-            <span style={{ color: "rgba(123,94,167,0.35)", fontSize: 9 }}>›</span>
+            <span style={{ color: states[i] === "done" ? "rgba(57,255,20,0.5)" : "rgba(123,94,167,0.35)", fontSize: 9, transition: "color 0.5s" }}>›</span>
           )}
         </React.Fragment>
       ))}
